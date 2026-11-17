@@ -1,0 +1,17 @@
+/* Tokens da direção visual (proposta da Fase 0). Acentos têm função: gelo = ECHO, óxido = ameaça. */
+:root{--bg:#0B0C0E;--g1:#1A1C20;--g2:#2A2D33;--metal:#6B727B;--ink:#E8E6E1;--echo:#7FD6E8;--threat:#C4452D}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;font:13px/1.4 system-ui,sans-serif}
+#c{position:fixed;inset:0;width:100%;height:100%;outline:none;touch-action:none}
+#ui{position:fixed;inset:0;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.dbg{position:absolute;top:8px;left:8px;width:min(290px,54vw);padding:8px;background:rgba(11,12,14,.84);border:1px solid var(--g2);border-radius:6px;pointer-events:auto;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace}
+.dbg pre{margin:0;white-space:pre-wrap}
+.dbg .err{color:var(--threat)}
+.dbg button{font:inherit;color:var(--ink);background:var(--g2);border:1px solid var(--metal);border-radius:4px;padding:8px 10px;margin:6px 6px 0 0;min-height:40px}
+.dbg label{display:block;margin-top:6px}
+.dbg input[type=range]{width:100%;margin:2px 0}
+.dbg textarea{width:100%;height:96px;margin-top:6px;background:var(--bg);color:var(--ink);border:1px solid var(--g2);font:10px ui-monospace,monospace;user-select:text;-webkit-user-select:text}
+.joy{position:absolute;border-radius:50%;pointer-events:none}
+.joy-base{width:120px;height:120px;margin:-60px 0 0 -60px;border:2px solid var(--metal);opacity:.6}
+.joy-knob{width:50px;height:50px;margin:-25px 0 0 -25px;background:var(--ink);opacity:.45}
+[hidden]{display:none!important}

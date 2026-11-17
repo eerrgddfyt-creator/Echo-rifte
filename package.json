@@ -1,0 +1,6 @@
+{
+  "name": "echo-rift",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node sim.test.js" }
+}
