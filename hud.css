@@ -15,3 +15,20 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hi
 .joy-base{width:120px;height:120px;margin:-60px 0 0 -60px;border:2px solid var(--metal);opacity:.6}
 .joy-knob{width:50px;height:50px;margin:-25px 0 0 -25px;background:var(--ink);opacity:.45}
 [hidden]{display:none!important}
+
+/* M3: HUD de combate e botão de golpe */
+.dbg.min{width:auto}
+.dbg .head{margin:0}
+.hud{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:min(44vw,440px);display:flex;gap:16px;pointer-events:none}
+.hp{flex:1;font:11px/1.2 system-ui,sans-serif;color:var(--metal)}
+.hp div{position:relative;height:8px;margin-top:3px;background:var(--g1);border:1px solid var(--g2);overflow:hidden}
+.hp i{position:absolute;top:0;bottom:0;left:0;width:100%}
+.hp .bar{background:var(--ink)}
+.hp .trail{background:var(--threat);transition:width .5s ease .35s}
+.hp.foe{text-align:right}
+.hp.foe i{left:auto;right:0}
+.hud.snap .trail{transition:none}
+.msg{position:absolute;top:46px;left:0;right:0;margin:0;text-align:center;font:600 18px/1.2 system-ui,sans-serif;color:var(--ink)}
+.btn{position:absolute;right:calc(28px + env(safe-area-inset-right));bottom:calc(32px + env(safe-area-inset-bottom));width:92px;height:92px;border-radius:50%;border:2px solid var(--metal);background:rgba(42,45,51,.55);color:var(--ink);display:grid;place-items:center;pointer-events:auto;touch-action:none}
+.btn svg{width:40px;height:40px}
+.btn.on{background:rgba(232,230,225,.85);color:var(--bg)}
