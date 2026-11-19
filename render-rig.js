@@ -1,9 +1,13 @@
 import { CH, NCH, loco, atk, solveArm, qFromTo } from './render-pose.js';
 import { ANIM } from './data-anim.js';
 
+const S = (u) => u * u * (3 - 2 * u);
+const clamp01 = (u) => (u < 0 ? 0 : u > 1 ? 1 : u);
+
 /**
  * Figuras procedurais provisórias (VANGUARD e alvo de treino). Só leem o estado da sim.
- * O VANGUARD é animado por pose: locomoção + golpe (spline de keyframes, braços por IK), misturados e suavizados.
+ * O VANGUARD é animado por pose: locomoção + golpe + esquiva (spline de keyframes, braços por IK), misturadas e suavizadas.
+ * O alvo mostra o bot: bastão que levanta, setor vermelho que enche até o golpe (telégrafo), recuo e flash ao levar dano.
  */
 export function createRig(scene, kind, params) {
   const B = window.BABYLON;
@@ -29,114 +33,207 @@ export function createRig(scene, kind, params) {
   ring.material = mat(kind === 'player' ? '#E8E6E1' : '#C4452D', true);
   ring.parent = root; ring.position.y = 0.04; ring.isPickable = false;
 
-  if (kind === 'target') {
+  const buildTarget = () => {
     const body = B.MeshBuilder.CreateCapsule('body', { radius: 0.45, height: 1.8 }, scene), bm = mat('#4A4F57');
     body.material = bm; body.parent = root; body.position.y = 0.9; body.isPickable = false;
+    const face = node(root, 0, 0, 0), baton = node(face, 0.5, 1.2, 0.1); // face gira com o bot; o corpo (cápsula) só inclina
+    part(0.09, 0.09, 1.1, baton, 0, 0, 0.55, mat('#2A2D33'));
+
+    // setor do golpe do bot no chão (telégrafo): o vermelho só aparece para ameaça
+    const bk = params.bot, R = bk.reach + params.radius, half = (bk.arcDeg * Math.PI) / 360;
+    const rm = mat('#C4452D', true); rm.backFaceCulling = false;
+    const wedge = (y) => {
+      const N = 14, pos = [0, 0, 0], nor = [0, 1, 0], idx = [];
+      for (let i = 0; i <= N; i++) {
+        const a = ((i / N) * 2 - 1) * half;
+        pos.push(Math.sin(a) * R, 0, Math.cos(a) * R); nor.push(0, 1, 0);
+        if (i) idx.push(0, i, i + 1);
+      }
+      const m = new B.Mesh('wedge', scene), vd = new B.VertexData();
+      vd.positions = pos; vd.normals = nor; vd.indices = idx; vd.applyToMesh(m);
+      m.material = rm; m.parent = face; m.position.y = y; m.isPickable = false; m.isVisible = false;
+      return m;
+    };
+    const wBase = wedge(0.03), wFill = wedge(0.035);
+
+    const REST = 0.9, RAISE = -1.9, HIT = 1.25; // ângulos do bastão (rad): repouso, levantado, fim do golpe
     let rec = 0, rdx = 0, rdz = 1, flash = 0, down = 0, koT = 0;
     return {
-      update(x, z, dt) {
+      /** t = estado do alvo na sim (bst: 0 perseguindo, 1 telegrafando, 2 golpeando; bt: ticks no estado). */
+      update(x, z, yaw, t, dt, alpha) {
         rec *= Math.exp(-dt * 9); flash *= Math.exp(-dt * 14);
         koT += (down - koT) * (1 - Math.exp(-dt * 6));
         root.position.set(x + rdx * rec * 0.22, 0, z + rdz * rec * 0.22);
+        face.rotation.y = yaw;
         const tilt = rec * 0.28 + koT * 1.35; // recuo do golpe + queda
         body.rotation.x = tilt * rdz; body.rotation.z = -tilt * rdx;
         body.position.y = 0.9 - koT * 0.42;
         const e = bm.emissiveColor; e.r = e.g = e.b = flash * 0.85; // flash de acerto
+
+        const tf = Math.max(0, t.bt + alpha - 1);
+        let ang = REST, show = 0, fill = 0;
+        if (t.bst === 1) { // telégrafo: o bastão sobe em ~70% do tempo e o setor enche até o instante do golpe
+          const u = clamp01(tf / bk.telegraph), up = 1 - Math.pow(1 - clamp01(tf / (bk.telegraph * 0.7)), 3);
+          ang = REST + (RAISE - REST) * up; show = 0.22 + 0.12 * u; fill = u;
+        } else if (t.bst === 2) {
+          if (tf < bk.active) { const u = clamp01(tf / bk.active); ang = RAISE + (HIT - RAISE) * u * u; show = 0.85; fill = 1; }
+          else ang = HIT + (REST - HIT) * S(clamp01((tf - bk.active) / bk.recovery));
+        }
+        baton.rotation.x = ang;
+        wBase.isVisible = wFill.isVisible = show > 0;
+        if (show > 0) {
+          wBase.visibility = show; wFill.visibility = Math.min(1, show + 0.3);
+          wFill.scaling.x = wFill.scaling.z = Math.max(0.02, fill);
+        }
       },
       hit(dx, dz) { rdx = dx; rdz = dz; rec = 1; flash = 1; },
       ko() { down = 1; },
       reset() { down = 0; koT = 0; rec = 0; flash = 0; },
     };
-  }
-
-  // VANGUARD: ombros largos, lâmina de um gume. Frente = +z local.
-  const dark = mat('#2A2D33'), mid = mat('#4A4F57'), blade = mat('#E8E6E1', true);
-  const legs = node(root, 0, 0.95, 0), hips = node(root, 0, 0.95, 0);
-  const legL = node(legs, -0.14, 0, 0), legR = node(legs, 0.14, 0, 0);
-  part(0.2, 0.92, 0.22, legL, 0, -0.46, 0, dark); part(0.2, 0.92, 0.22, legR, 0, -0.46, 0, dark);
-  const torso = node(hips, 0, 0.05, 0);
-  part(0.5, 0.62, 0.3, torso, 0, 0.36, 0, mid);
-  part(0.3, 0.16, 0.36, torso, -0.38, 0.64, 0, dark); part(0.3, 0.16, 0.36, torso, 0.38, 0.64, 0, dark);
-  const head = node(torso, 0, 0.86, 0);
-  part(0.26, 0.28, 0.28, head, 0, 0, 0, dark); part(0.2, 0.05, 0.02, head, 0, 0.02, 0.15, blade);
-
-  // braços: 2 ossos cada, posicionados por IK. Os nós usam quaternion (um osso aponta de -y para a direção calculada).
-  const qnode = () => { const n = node(torso, 0, 0, 0); n.rotationQuaternion = new B.Quaternion(); return n; };
-  const upR = qnode(), foreR = qnode(), handR = qnode(), upL = qnode(), foreL = qnode();
-  upR.position.set(0.36, 0.6, 0); upL.position.set(-0.36, 0.6, 0);
-  for (const n of [upR, upL]) part(0.14, 0.3, 0.16, n, 0, -0.15, 0, mid);
-  for (const n of [foreR, foreL]) part(0.13, 0.3, 0.15, n, 0, -0.15, 0, mid);
-  part(0.06, 0.06, 0.2, handR, 0, 0, 0.06, dark); part(0.04, 0.04, 1.0, handR, 0, 0, 0.66, blade);
-
-  const Q = new Float32Array(4), R = new Float32Array(12);
-  const setQ = (n) => { const q = n.rotationQuaternion; q.x = Q[0]; q.y = Q[1]; q.z = Q[2]; q.w = Q[3]; };
-  const arm = (up, fore, hand, sx, c, h0, b0, pole) => {
-    solveArm(R, sx, 0.6, 0, c[h0], c[h0 + 1], c[h0 + 2], pole, -1, -0.4);
-    qFromTo(Q, 0, -1, 0, R[3], R[4], R[5]); setQ(up);
-    fore.position.set(R[0], R[1], R[2]); qFromTo(Q, 0, -1, 0, R[6], R[7], R[8]); setQ(fore);
-    if (hand) { hand.position.set(R[9], R[10], R[11]); qFromTo(Q, 0, 0, 1, c[b0], c[b0 + 1], c[b0 + 2]); setQ(hand); }
-  };
-  const apply = (c) => {
-    const y = 0.95 + c[CH.hipY];
-    legs.position.y = y; hips.position.y = y; hips.rotation.y = c[CH.hipRY];
-    torso.rotation.x = c[CH.torRX]; torso.rotation.y = c[CH.torRY]; torso.rotation.z = c[CH.torRZ];
-    head.rotation.y = -(c[CH.hipRY] + c[CH.torRY]) * 0.6; // o olhar fica no alvo
-    legL.rotation.x = c[CH.legL]; legR.rotation.x = c[CH.legR];
-    arm(upR, foreR, handR, 0.36, c, CH.hx, CH.bx, 0.6);
-    arm(upL, foreL, null, -0.36, c, CH.ox, 0, -0.6);
   };
 
-  // rastro do golpe: dois crescentes planos (o arco do acerto), um principal e um atrasado
-  const fx = node(root, 0, 1.0, 0), fm = mat('#E8E6E1', true);
-  fm.backFaceCulling = false;
-  const crescent = () => {
-    const N = 12, W = 0.9, rc = params.reach - 0.25, pos = [], nor = [], idx = [];
-    for (let i = 0; i <= N; i++) {
-      const u = i / N, a = (u - 0.5) * W, hw = 0.25 * Math.pow(Math.sin(Math.PI * u), 0.8);
-      pos.push(Math.sin(a) * (rc - hw), 0, Math.cos(a) * (rc - hw), Math.sin(a) * (rc + hw), 0, Math.cos(a) * (rc + hw));
-      nor.push(0, 1, 0, 0, 1, 0);
-      if (i) { const o = (i - 1) * 2; idx.push(o, o + 1, o + 2, o + 1, o + 3, o + 2); }
-    }
-    const m = new B.Mesh('slash', scene), vd = new B.VertexData();
-    vd.positions = pos; vd.normals = nor; vd.indices = idx; vd.applyToMesh(m);
-    m.material = fm; m.parent = fx; m.isPickable = false; m.isVisible = false;
-    return m;
-  };
-  const slashA = crescent(), slashB = crescent();
-  const slash = (tf, step) => {
-    const A = params.attacks[step], u = (tf - (A.startup - 1)) / (A.active + 3);
-    if (u < 0 || u > 1) { slashA.isVisible = slashB.isVisible = false; return; }
-    const dir = step === 0 ? 1 : -1, e = 1 - (1 - u) * (1 - u), e2 = Math.max(0, e - 0.2);
-    const a = u < 0.25 ? u / 0.25 : Math.pow((1 - u) / 0.75, 1.3);
-    slashA.isVisible = slashB.isVisible = true;
-    slashA.rotation.y = dir * (1 - 2 * e) * 0.95; slashA.visibility = a * 0.9;
-    slashB.rotation.y = dir * (1 - 2 * e2) * 0.95; slashB.visibility = a * 0.35;
-    slashA.scaling.x = slashA.scaling.z = 1 + 0.12 * u;
-    slashB.scaling.x = slashB.scaling.z = 1.1 + 0.12 * u;
+  const buildVanguard = () => {
+    // VANGUARD: ombros largos, lâmina de um gume. Frente = +z local.
+    const dark = mat('#2A2D33'), mid = mat('#4A4F57'), blade = mat('#E8E6E1', true);
+    const legs = node(root, 0, 0.95, 0), hips = node(root, 0, 0.95, 0);
+    const legL = node(legs, -0.14, 0, 0), legR = node(legs, 0.14, 0, 0);
+    part(0.2, 0.92, 0.22, legL, 0, -0.46, 0, dark); part(0.2, 0.92, 0.22, legR, 0, -0.46, 0, dark);
+    const torso = node(hips, 0, 0.05, 0);
+    part(0.5, 0.62, 0.3, torso, 0, 0.36, 0, mid);
+    part(0.3, 0.16, 0.36, torso, -0.38, 0.64, 0, dark); part(0.3, 0.16, 0.36, torso, 0.38, 0.64, 0, dark);
+    const head = node(torso, 0, 0.86, 0);
+    part(0.26, 0.28, 0.28, head, 0, 0, 0, dark); part(0.2, 0.05, 0.02, head, 0, 0.02, 0.15, blade);
+
+    // braços: 2 ossos cada, posicionados por IK. Os nós usam quaternion (um osso aponta de -y para a direção calculada).
+    const qnode = () => { const n = node(torso, 0, 0, 0); n.rotationQuaternion = new B.Quaternion(); return n; };
+    const upR = qnode(), foreR = qnode(), handR = qnode(), upL = qnode(), foreL = qnode();
+    upR.position.set(0.36, 0.6, 0); upL.position.set(-0.36, 0.6, 0);
+    for (const n of [upR, upL]) part(0.14, 0.3, 0.16, n, 0, -0.15, 0, mid);
+    for (const n of [foreR, foreL]) part(0.13, 0.3, 0.15, n, 0, -0.15, 0, mid);
+    part(0.06, 0.06, 0.2, handR, 0, 0, 0.06, dark); part(0.04, 0.04, 1.0, handR, 0, 0, 0.66, blade);
+
+    const Q = new Float32Array(4), R = new Float32Array(12);
+    const setQ = (n) => { const q = n.rotationQuaternion; q.x = Q[0]; q.y = Q[1]; q.z = Q[2]; q.w = Q[3]; };
+    const arm = (up, fore, hand, sx, c, h0, b0, pole) => {
+      solveArm(R, sx, 0.6, 0, c[h0], c[h0 + 1], c[h0 + 2], pole, -1, -0.4);
+      qFromTo(Q, 0, -1, 0, R[3], R[4], R[5]); setQ(up);
+      fore.position.set(R[0], R[1], R[2]); qFromTo(Q, 0, -1, 0, R[6], R[7], R[8]); setQ(fore);
+      if (hand) { hand.position.set(R[9], R[10], R[11]); qFromTo(Q, 0, 0, 1, c[b0], c[b0 + 1], c[b0 + 2]); setQ(hand); }
+    };
+    const apply = (c) => {
+      const y = 0.95 + c[CH.hipY];
+      legs.position.y = y; hips.position.y = y; hips.rotation.y = c[CH.hipRY];
+      torso.rotation.x = c[CH.torRX]; torso.rotation.y = c[CH.torRY]; torso.rotation.z = c[CH.torRZ];
+      head.rotation.y = -(c[CH.hipRY] + c[CH.torRY]) * 0.6; // o olhar fica no alvo
+      legL.rotation.x = c[CH.legL]; legR.rotation.x = c[CH.legR];
+      arm(upR, foreR, handR, 0.36, c, CH.hx, CH.bx, 0.6);
+      arm(upL, foreL, null, -0.36, c, CH.ox, 0, -0.6);
+    };
+
+    // rastro do golpe: dois crescentes planos (o arco do acerto), um principal e um atrasado
+    const fx = node(root, 0, 1.0, 0), fm = mat('#E8E6E1', true);
+    fm.backFaceCulling = false;
+    const crescent = () => {
+      const N = 12, W = 0.9, rc = params.reach - 0.25, pos = [], nor = [], idx = [];
+      for (let i = 0; i <= N; i++) {
+        const u = i / N, a = (u - 0.5) * W, hw = 0.25 * Math.pow(Math.sin(Math.PI * u), 0.8);
+        pos.push(Math.sin(a) * (rc - hw), 0, Math.cos(a) * (rc - hw), Math.sin(a) * (rc + hw), 0, Math.cos(a) * (rc + hw));
+        nor.push(0, 1, 0, 0, 1, 0);
+        if (i) { const o = (i - 1) * 2; idx.push(o, o + 1, o + 2, o + 1, o + 3, o + 2); }
+      }
+      const m = new B.Mesh('slash', scene), vd = new B.VertexData();
+      vd.positions = pos; vd.normals = nor; vd.indices = idx; vd.applyToMesh(m);
+      m.material = fm; m.parent = fx; m.isPickable = false; m.isVisible = false;
+      return m;
+    };
+    const slashA = crescent(), slashB = crescent();
+    const slash = (tf, step) => {
+      const K = params.attacks[step], u = (tf - (K.startup - 1)) / (K.active + 3);
+      if (u < 0 || u > 1) { slashA.isVisible = slashB.isVisible = false; return; }
+      const dir = step === 0 ? 1 : -1, e = 1 - (1 - u) * (1 - u), e2 = Math.max(0, e - 0.2);
+      const a = u < 0.25 ? u / 0.25 : Math.pow((1 - u) / 0.75, 1.3);
+      slashA.isVisible = slashB.isVisible = true;
+      slashA.rotation.y = dir * (1 - 2 * e) * 0.95; slashA.visibility = a * 0.9;
+      slashB.rotation.y = dir * (1 - 2 * e2) * 0.95; slashB.visibility = a * 0.35;
+      slashA.scaling.x = slashA.scaling.z = 1 + 0.12 * u;
+      slashB.scaling.x = slashB.scaling.z = 1.1 + 0.12 * u;
+    };
+
+    // rastro do deslize da esquiva: faixa branca no chão da origem até o jogador, some na recuperação
+    const trail = B.MeshBuilder.CreateBox('trail', { width: 0.7, height: 0.02, depth: 1 }, scene);
+    trail.material = mat('#E8E6E1', true); trail.position.y = 0.03; trail.isPickable = false; trail.isVisible = false;
+
+    const dk = params.dodge;
+    const PL = new Float32Array(NCH), PA = new Float32Array(NCH), PD = new Float32Array(NCH);
+    const cur = new Float32Array(NCH), fromA = new Float32Array(NCH), fromD = new Float32Array(NCH), PF = new Float32Array(NCH);
+    loco(cur, 0, 0, 0, 0); PA.set(cur); PD.set(cur); fromA.set(cur); fromD.set(cur);
+    let phase = 0, time = 0, wa = 0, wd = 0, wf = 0, lastStep = -1, lastT = 999, lastD = -1;
+    let rec = 0, rdx = 0, rdz = 1, flash = 0, pulse = 0, down = 0;
+    return {
+      /** x, z, yaw já interpolados; p = estado do jogador na sim; alpha = fração entre dois ticks. */
+      update(x, z, yaw, p, alpha, dt, vmax) {
+        rec *= Math.exp(-dt * 8); flash *= Math.exp(-dt * 12); pulse *= Math.exp(-dt * 6);
+        root.position.set(x + rdx * rec * 0.25, 0, z + rdz * rec * 0.25); root.rotation.y = yaw;
+        time += dt;
+        const sp = Math.hypot(p.vx, p.vz);
+        phase += sp * dt * 2.2;
+        loco(PL, phase, Math.min(sp / vmax, 1), (p.vx * Math.sin(yaw) + p.vz * Math.cos(yaw)) / vmax, time);
+
+        const tf = Math.max(0, p.t + alpha - 1); // golpe: tick fracionado
+        if (p.st) {
+          if (p.step !== lastStep || p.t < lastT) fromA.set(cur); // golpe novo: parte da pose atual, sem estalo
+          atk(PA, ANIM, ANIM.attacks[p.step].keys, tf, fromA);
+          lastStep = p.step; lastT = p.t;
+        } else { lastStep = -1; lastT = 999; }
+
+        const df = Math.max(0, p.dt + alpha - 1); // esquiva: tick fracionado
+        if (p.dt >= 0) {
+          if (lastD < 0 || p.dt < lastD) fromD.set(cur);
+          atk(PD, ANIM, ANIM.dodge.keys, df, fromD);
+          // inclina o corpo para o lado da fuga (frente/costas e esquerda/direita em relação a quem olha o alvo)
+          const lf = p.ddx * Math.sin(yaw) + p.ddz * Math.cos(yaw), ls = p.ddx * Math.cos(yaw) - p.ddz * Math.sin(yaw);
+          const amp = S(clamp01((df - 1) / 6)) * (1 - S(clamp01((df - 8) / 8)));
+          PD[CH.torRX] += 0.3 * lf * amp; PD[CH.torRZ] -= 0.3 * ls * amp;
+        }
+        lastD = p.dt;
+
+        wa += ((p.st ? 1 : 0) - wa) * (1 - Math.exp(-dt * (p.st ? 40 : 14))); // pesos: entram e saem suaves
+        wd += ((p.dt >= 0 ? 1 : 0) - wd) * (1 - Math.exp(-dt * (p.dt >= 0 ? 45 : 14)));
+        let ea = wa, ed = wd; const sum = ea + ed;
+        if (sum > 1) { ea /= sum; ed /= sum; }
+        const k = 1 - Math.exp(-dt * (p.st || p.dt >= 0 ? 55 : 18)); // filtro final: tira qualquer degrau da pose
+        for (let c = 0; c < NCH; c++) cur[c] += (PL[c] + (PA[c] - PL[c]) * ea + (PD[c] - PL[c]) * ed - cur[c]) * k;
+
+        wf += (down - wf) * (1 - Math.exp(-dt * 5)); // queda (jogador derrotado)
+        PF.set(cur);
+        if (wf > 0.001) {
+          PF[CH.hipY] -= 0.55 * wf; PF[CH.torRX] -= 1.0 * wf; PF[CH.legL] -= 0.6 * wf; PF[CH.legR] += 0.6 * wf;
+          PF[CH.hy] -= 0.2 * wf; PF[CH.oy] -= 0.2 * wf;
+        }
+        apply(PF);
+        slash(p.st ? tf : -99, p.step);
+
+        if (p.dt >= dk.startup) { // faixa do deslize
+          const e = p.dt - (dk.startup + dk.iframes), vis = e < 0 ? 0.5 : 0.5 * (1 - clamp01(e / 6));
+          const len = Math.hypot(x - p.dox, z - p.doz);
+          if (vis > 0.02 && len > 0.05) {
+            trail.isVisible = true; trail.visibility = vis;
+            trail.position.x = (x + p.dox) / 2; trail.position.z = (z + p.doz) / 2;
+            trail.rotation.y = Math.atan2(p.ddx, p.ddz); trail.scaling.z = len;
+          } else trail.isVisible = false;
+        } else trail.isVisible = false;
+
+        ring.scaling.x = ring.scaling.z = 1 + pulse * 0.9; ring.visibility = 1 - pulse * 0.4; // pulso da esquiva perfeita
+        const f = flash * 0.7; // flash de dano no corpo todo
+        dark.emissiveColor.r = dark.emissiveColor.g = dark.emissiveColor.b = f;
+        mid.emissiveColor.r = mid.emissiveColor.g = mid.emissiveColor.b = f;
+      },
+      hurt(dx, dz) { rdx = dx; rdz = dz; rec = 1; flash = 1; },
+      perfect() { pulse = 1; },
+      ko() { down = 1; },
+      reset() { down = 0; wf = 0; rec = 0; flash = 0; pulse = 0; },
+    };
   };
 
-  const L = new Float32Array(NCH), A = new Float32Array(NCH), cur = new Float32Array(NCH), from = new Float32Array(NCH);
-  loco(cur, 0, 0, 0, 0); A.set(cur); from.set(cur);
-  let phase = 0, time = 0, w = 0, lastStep = -1, lastT = 999;
-  return {
-    /** x, z, yaw já interpolados; p = estado do jogador na sim; alpha = fração entre dois ticks. */
-    update(x, z, yaw, p, alpha, dt, vmax) {
-      root.position.set(x, 0, z); root.rotation.y = yaw;
-      time += dt;
-      const sp = Math.hypot(p.vx, p.vz);
-      phase += sp * dt * 2.2;
-      loco(L, phase, Math.min(sp / vmax, 1), (p.vx * Math.sin(yaw) + p.vz * Math.cos(yaw)) / vmax, time);
-      const tf = Math.max(0, p.t + alpha - 1);
-      if (p.st) {
-        if (p.step !== lastStep || p.t < lastT) from.set(cur); // golpe novo: parte da pose atual, sem estalo
-        atk(A, ANIM, ANIM.attacks[p.step].keys, tf, from);
-        lastStep = p.step; lastT = p.t;
-      } else { lastStep = -1; lastT = 999; }
-      w += ((p.st ? 1 : 0) - w) * (1 - Math.exp(-dt * (p.st ? 40 : 14))); // peso do golpe: entra e sai suave
-      const k = 1 - Math.exp(-dt * (p.st ? 55 : 18)); // filtro final: tira qualquer degrau da pose
-      for (let c = 0; c < NCH; c++) cur[c] += (L[c] + (A[c] - L[c]) * w - cur[c]) * k;
-      apply(cur);
-      slash(p.st ? tf : -99, p.step);
-    },
-  };
+  return kind === 'target' ? buildTarget() : buildVanguard();
 }

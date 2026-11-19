@@ -1,5 +1,5 @@
 /** Combate puro: estados do golpe, hitbox em arco, dano e eventos. Sem render, sem DOM. */
-export const EV = { SWING: 'swing', HIT: 'hit', KO: 'ko', RESET: 'reset' };
+export const EV = { SWING: 'swing', HIT: 'hit', KO: 'ko', RESET: 'reset', DODGE: 'dodge', PERFECT: 'perfect', TELE: 'tele' };
 const TAU = Math.PI * 2;
 
 /** Escreve um evento no pool reutilizado (sem alocação). Se encher, descarta e conta. */
@@ -17,13 +17,19 @@ export function inArc(ax, az, yaw, tx, tz, tr, reach, arcDeg) {
   return diff <= (arcDeg * Math.PI) / 360;
 }
 
-/** Aplica dano. who: 0 = jogador, 1 = alvo. A vida trava em 0 e o zero encerra a rodada. */
+/**
+ * Único caminho de dano. who: 0 = jogador, 1 = alvo. A vida trava em 0 e o zero encerra a rodada.
+ * Jogador invulnerável (janela da esquiva) não leva dano: vira esquiva perfeita. Retorna true se causou dano.
+ */
 export function applyDamage(w, who, amount, step = 0) {
   const e = who ? w.target : w.player;
-  if (w.phase !== 'fight' || e.hp <= 0) return;
+  if (w.phase !== 'fight' || e.hp <= 0) return false;
+  if (!who && e.invul) { w.stats.perfect++; emit(w, EV.PERFECT, 0); return false; }
   e.hp = Math.max(0, e.hp - amount);
+  if (!who) w.stats.taken++;
   emit(w, EV.HIT, who, step, amount);
   if (e.hp === 0) { w.phase = 'ended'; w.endTick = w.tick; w.stats.kos++; emit(w, EV.KO, who); }
+  return true;
 }
 
 function start(w, p, step) {
@@ -43,7 +49,7 @@ export function stepCombat(w, input) {
     if (p.step === 0 && p.buf > 0 && p.t >= total - k.chainWindow) start(w, p, 1);
     else if (p.t >= total) p.st = 0;
   }
-  if (p.st === 0 && p.buf > 0 && w.phase === 'fight') start(w, p, 0);
+  if (p.st === 0 && p.buf > 0 && w.phase === 'fight' && p.dt < 0) start(w, p, 0); // golpe não cancela a esquiva
 }
 
 /** Acerto: só nos ticks ativos, no máximo uma vez por golpe. */

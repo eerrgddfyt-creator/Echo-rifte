@@ -2,5 +2,5 @@
   "name": "echo-rift",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node sim.test.js" }
+  "scripts": { "test": "node sim.test.js && node render.test.js" }
 }

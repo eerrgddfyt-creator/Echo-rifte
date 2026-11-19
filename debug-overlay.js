@@ -54,8 +54,9 @@ export function createOverlay({ host, engine, scene, params, world, onDummyMode 
   const resBtn = btn('Res 100%', () => {
     lvl = (lvl + 1) % LV.length; engine.setHardwareScalingLevel(LV[lvl][1]); resBtn.textContent = 'Res ' + LV[lvl][0];
   });
+  const MODOS = ['parado', 'circular', 'perseguidor'];
   const modeBtn = btn('Alvo: parado', () => {
-    const m = world.dummyMode === 'parado' ? 'circular' : 'parado';
+    const m = MODOS[(MODOS.indexOf(world.dummyMode) + 1) % MODOS.length];
     onDummyMode(m); modeBtn.textContent = 'Alvo: ' + m;
   });
   btn('Ajustes', () => { tune.hidden = !tune.hidden; });
@@ -72,6 +73,9 @@ export function createOverlay({ host, engine, scene, params, world, onDummyMode 
     ['Dano A1', () => params.attacks[0].damage, (v) => (params.attacks[0].damage = v), 1, 30, 1],
     ['Dano A2', () => params.attacks[1].damage, (v) => (params.attacks[1].damage = v), 1, 40, 1],
     ['Alcance (m)', () => params.reach, (v) => (params.reach = v), 1, 4, 0.1],
+    ['Dano do bot', () => params.bot.damage, (v) => (params.bot.damage = v), 1, 30, 1],
+    ['Telégrafo do bot (ticks)', () => params.bot.telegraph, (v) => (params.bot.telegraph = v), 12, 40, 1],
+    ['Recarga da esquiva (ticks)', () => params.dodge.cooldown, (v) => (params.dodge.cooldown = v), 10, 120, 1],
   ]) {
     const lab = document.createElement('label'), txt = document.createTextNode(''), inp = document.createElement('input');
     inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = get();
@@ -96,6 +100,7 @@ export function createOverlay({ host, engine, scene, params, world, onDummyMode 
         `draw ${s.drawCalls}  tri ${s.triangulos}  malhas ${s.malhas}\n` +
         `heap ${s.heapMB ?? 'n/d'} MB  res ${LV[lvl][0]}  tick ${world.tick}\n` +
         `golpes ${c.swings}  acertos ${c.hits}  KO ${c.kos}  reinícios ${c.resets}\n` +
+        `esquivas ${c.dodges}  perfeitas ${c.perfect}  sofridos ${c.taken}\n` +
         `Babylon ${B.Engine.Version}  1º quadro ${Math.round(first)} ms`;
       er.textContent = errors.map((e) => 'ERRO ' + e).join('\n');
     },

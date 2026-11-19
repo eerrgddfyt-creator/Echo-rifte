@@ -107,6 +107,89 @@ const encadeia = (press2) => { const w = novo(); perto(w, 1.6); const q = [];
   for (let i = 0; i < 8000; i++) { f(a, r1, i); f(b, r2, i); }
   ok('determinismo com golpes: mesmas entradas, mesmo estado', snap(a) === snap(b) && JSON.stringify(a.stats) === JSON.stringify(b.stats)); }
 
+console.log('--- esquiva e bot (M4) ---');
+const dk = VANGUARD.dodge, bk = VANGUARD.bot;
+const eventos = (w) => { const l = []; for (let j = 0; j < w.nev; j++) l.push(w.events[j].type + ':' + w.events[j].a); w.nev = 0; return l; };
+const botMundo = () => { const w = novo(), p = w.player, t = w.target; setDummyMode(w, 'perseguidor'); p.x = p.px = 0; p.z = p.pz = 0; t.x = t.px = 2; t.z = t.pz = 0; t.bcd = 0; return w; };
+{ const res = [];
+  for (let i = 0; i <= 14; i++) { const w = novo(); for (let j = 0; j <= i; j++) passo(w, { dodge: j === 0 }); const hp0 = w.player.hp; applyDamage(w, 0, 10); res.push(w.player.hp === hp0 ? 'I' : 'v'); }
+  const esp = Array.from({ length: 15 }, (_, i) => (i >= dk.startup && i < dk.startup + dk.iframes ? 'I' : 'v')).join('');
+  ok(`esquiva: invulnerável exatamente nos ticks ${dk.startup} a ${dk.startup + dk.iframes - 1} (bordas 2 e 11 levam dano)`, res.join('') === esp, res.join('') + ' esperado ' + esp); }
+{ const w = novo(); const x0 = w.player.x, z0 = w.player.z;
+  for (let i = 0; i < 23; i++) stepWorld(w, { mx: 0, mz: i === 0 ? 1 : 0, dodge: i === 0 });
+  ok('esquiva com joystick: desliza 3 m na direção escolhida', Math.abs(w.player.z - z0 - dk.dist) < 1e-9 && Math.abs(w.player.x - x0) < 1e-9, `dz ${(w.player.z - z0).toFixed(4)} m`); }
+{ const w = novo(); perto(w, 6); const x0 = w.player.x;
+  for (let i = 0; i < 23; i++) passo(w, { dodge: i === 0 });
+  ok('esquiva sem joystick: recua 3 m para longe do alvo', Math.abs(x0 - w.player.x - dk.dist) < 1e-9, `dx ${(w.player.x - x0).toFixed(4)} m`); }
+{ const w = novo(); const q = [];
+  for (let i = 0; i < 120; i++) { passo(w, { dodge: true }); drena(w, 'dodge', () => q.push(i)); }
+  ok('recarga: próxima esquiva só 48 ticks depois', q[0] === 0 && q[1] === 48 && q[2] === 96, 'ticks ' + q); }
+const cena = (atkEm, dodEm, n = 40) => { const w = novo(); perto(w, 1.6); let d = -1;
+  for (let i = 0; i < n; i++) { passo(w, { attack: i === atkEm, dodge: i === dodEm }); drena(w, 'dodge', () => { if (d < 0) d = i; }); } return { w, d }; };
+{ const { w, d } = cena(0, 11); ok('esquiva cancela a recuperação do golpe (tick 11)', d === 11 && w.stats.dodges === 1 && w.player.st === 0, 'esquiva no tick ' + d); }
+{ const { w } = cena(0, 3); ok('esquiva não cancela startup nem ativo do golpe (botão cedo expira)', w.stats.dodges === 0 && w.stats.swings === 1); }
+{ const w = novo(); perto(w, 1.6); for (let i = 0; i < 40; i++) passo(w, { dodge: i === 0, attack: i === 5 });
+  ok('golpe não cancela a esquiva (botão expira antes do fim)', w.stats.swings === 0 && w.stats.dodges === 1); }
+{ const w = novo(); perto(w, 1.6); const q = [];
+  for (let i = 0; i < 60; i++) { passo(w, { dodge: i === 0, attack: i === 19 }); drena(w, 'swing', () => q.push(i)); }
+  ok('golpe guardado sai quando a esquiva termina (tick 23)', q[0] === 23, 'ticks ' + q); }
+{ const w = botMundo(); let tele = -1, golpe = -1;
+  for (let i = 0; i < 60; i++) { passo(w, {}); const e = eventos(w); if (tele < 0 && e.includes('tele:1')) tele = i; if (golpe < 0 && e.includes('hit:0')) golpe = i; }
+  ok(`bot: telégrafo de ${bk.telegraph} ticks (${Math.round((bk.telegraph * 1000) / 60)} ms) antes do 1º tick de dano`, tele === 0 && golpe - tele === bk.telegraph, `telégrafo no tick ${tele}, dano no ${golpe}`);
+  ok(`bot: dano ${bk.damage} no jogador parado`, w.player.hp === 100 - bk.damage, 'vida ' + w.player.hp); }
+{ const w = botMundo(); const tele = [];
+  for (let i = 0; i < 300; i++) { passo(w, {}); if (eventos(w).includes('tele:1')) tele.push(i); }
+  const ciclo = bk.telegraph + bk.active + bk.recovery + bk.pause;
+  ok(`bot: ritmo fixo de ${ciclo} ticks por golpe (telégrafo + golpe + recuperação + pausa)`, tele[1] - tele[0] === ciclo && tele[2] - tele[1] === ciclo, 'telégrafos nos ticks ' + tele); }
+{ const rnd = mulberry32(2024); let danos = 0, perf = 0, tarde = 0;
+  for (let n = 0; n < 1000; n++) {
+    const w = botMundo(), ts = 14 + Math.floor(rnd() * 8), ang = rnd() * Math.PI * 2; // 14..21: a invulnerabilidade cobre o tick 24
+    for (let i = 0; i < 40; i++) { stepWorld(w, { mx: i === ts ? Math.cos(ang) : 0, mz: i === ts ? Math.sin(ang) : 0, dodge: i === ts }); w.nev = 0; }
+    if (w.player.hp < 100) danos++;
+    perf += w.stats.perfect;
+  }
+  for (let n = 0; n < 200; n++) { const w = botMundo(); for (let i = 0; i < 40; i++) { passo(w, { dodge: i === 22 }); w.nev = 0; } if (w.player.hp < 100) tarde++; }
+  ok('1000 esquivas no tempo certo: nenhum dano (o golpe do bot sempre falha)', danos === 0 && perf > 100, `danos ${danos}, esquivas perfeitas ${perf}`);
+  ok('esquiva tarde demais (tick 22): leva o dano', tarde === 200, tarde + ' de 200'); }
+{ const w = botMundo(), limpo = snap(novo()); let g = 0;
+  while (w.phase === 'fight' && g++ < 5000) passo(w, {});
+  const caiu = w.player.hp === 0, antes = w.stats.resets;
+  while (w.stats.resets === antes && g++ < 6000) passo(w, {});
+  ok('jogador derrotado pelo bot: rodada termina e reinicia idêntica a um mundo novo', caiu && snap(w) === limpo, `acertos sofridos ${w.stats.taken}`); }
+{ // fuzz do M4: bot + esquiva + golpes, trocando o modo do alvo; telégrafo mínimo conferido em todo acerto do bot
+  const rnd = mulberry32(777), w = novo(), { arena } = w, tol = 1e-6, v = { nan: 0, fora: 0, vida: 0, dentro: 0, ev: 0, estado: 0, tele: 0 };
+  const modos = ['perseguidor', 'circular', 'parado', 'perseguidor'], total = dk.startup + dk.iframes + dk.recovery;
+  let mx = 0, mz = 0, hold = 0, lastTele = -1e9;
+  setDummyMode(w, 'perseguidor');
+  for (let i = 0; i < 100000; i++) {
+    if (i % 5000 === 0) setDummyMode(w, modos[(i / 5000) % 4]);
+    if (i % 300 === 0) perto(w, 1 + rnd() * 2);
+    if (--hold <= 0) { hold = 1 + Math.floor(rnd() * 30); mx = rnd() < 0.3 ? 0 : rnd() * 2 - 1; mz = rnd() < 0.3 ? 0 : rnd() * 2 - 1; }
+    stepWorld(w, { mx, mz, attack: rnd() < 0.1, dodge: rnd() < 0.08 });
+    const p = w.player, t = w.target;
+    if (![p.x, p.z, p.vx, p.vz, p.yaw, t.x, t.z, t.yaw].every(Number.isFinite)) v.nan++;
+    if (arena.normals.some((n) => p.x * n.x + p.z * n.z + p.r > arena.apothem + tol || t.x * n.x + t.z * n.z + t.r > arena.apothem + tol)) v.fora++;
+    if (p.hp < 0 || p.hp > 100 || t.hp < 0 || t.hp > 100) v.vida++;
+    if (Math.hypot(p.x - t.x, p.z - t.z) < p.r + t.r - tol) v.dentro++;
+    if (w.nev > w.events.length) v.ev++;
+    if (p.dt < -1 || p.dt >= total || p.invul !== (p.dt >= dk.startup && p.dt < dk.startup + dk.iframes) || t.bst < 0 || t.bst > 2) v.estado++;
+    for (let j = 0; j < w.nev; j++) { const e = w.events[j]; if (e.type === 'tele') lastTele = w.tick; else if (e.type === 'hit' && e.a === 0 && w.tick - lastTele < bk.telegraph) v.tele++; else if (e.type === 'reset') lastTele = -1e9; }
+    w.nev = 0;
+  }
+  const s = w.stats;
+  ok('fuzz M4 (100k ticks): sem NaN', v.nan === 0, v.nan + ' violações');
+  ok('fuzz M4: jogador e bot sempre dentro da arena', v.fora === 0, v.fora + ' violações');
+  ok('fuzz M4: vida sempre entre 0 e 100', v.vida === 0, v.vida + ' violações');
+  ok('fuzz M4: jogador e bot nunca se atravessam', v.dentro === 0, v.dentro + ' violações');
+  ok('fuzz M4: estados da esquiva e do bot sempre válidos', v.estado === 0, v.estado + ' violações');
+  ok('fuzz M4: todo acerto do bot veio depois de pelo menos 24 ticks (400 ms) de telégrafo', v.tele === 0, v.tele + ' violações');
+  ok('fuzz M4: fila de eventos limitada e sem perda', v.ev === 0 && s.drops === 0, `descartados ${s.drops}`);
+  ok('fuzz M4: esquivas, esquivas perfeitas e acertos sofridos foram exercitados', s.dodges > 500 && s.perfect > 5 && s.taken > 20, `esquivas ${s.dodges}, perfeitas ${s.perfect}, sofridos ${s.taken}, KO ${s.kos}`); }
+{ const a = novo(), b = novo(), r1 = mulberry32(11), r2 = mulberry32(11); setDummyMode(a, 'perseguidor'); setDummyMode(b, 'perseguidor');
+  const f = (w, r, i) => { if (i % 250 === 0) perto(w, 1.5); stepWorld(w, { mx: r() * 2 - 1, mz: r() * 2 - 1, attack: r() < 0.15, dodge: r() < 0.1 }); w.nev = 0; };
+  for (let i = 0; i < 8000; i++) { f(a, r1, i); f(b, r2, i); }
+  ok('determinismo com bot e esquiva: mesmas entradas, mesmo estado', snap(a) === snap(b) && JSON.stringify(a.stats) === JSON.stringify(b.stats)); }
+
 console.log('--- animação (matemática pura) ---');
 { const idle = new Float64Array(NCH); loco(idle, 0, 0, 0, 0);
   ANIM.attacks.forEach((a, i) => { const out = new Float64Array(NCH), ks = a.keys, total = ks[ks.length - 1][0];
@@ -158,6 +241,17 @@ ANIM.attacks.forEach((a, i) => {
     for (const f of [[0, -1, 0], [0, 0, 1]]) { qFromTo(q, f[0], f[1], f[2], t[0], t[1], t[2]); const v = rot(q, f); if (Math.hypot(v[0] - t[0], v[1] - t[1], v[2] - t[2]) > 1e-9) mal++; }
   }
   ok('quaternion osso->direção gira o vetor exatamente (4000 casos)', mal === 0, mal + ' falhas'); }
+
+{ const ks = ANIM.dodge.keys, ts = ks.map((k) => k[0]), total = dk.startup + dk.iframes + dk.recovery;
+  ok('esquiva: chaves alinhadas (início do deslize, fim da invulnerabilidade, total)', ts[ts.length - 1] === total && ts.includes(dk.startup) && ts.includes(dk.startup + dk.iframes), 'chaves ' + ts);
+  const idle = new Float64Array(NCH), out = new Float64Array(NCH); loco(idle, 0, 0, 0, 0); atk(out, ANIM, ks, total + ANIM.lagBlade, null);
+  ok('esquiva: termina exatamente na pose de repouso', Math.max(...out.map((x, c) => Math.abs(x - idle[c]))) < 1e-9);
+  const o0 = new Float64Array(NCH), o1 = new Float64Array(NCH), o2 = new Float64Array(NCH); let vA = 0, vV = 0, aA = 0, aV = 0, bad = 0;
+  atk(o0, ANIM, ks, 0, null); atk(o1, ANIM, ks, 0.25, null);
+  for (let tf = 0.5; tf <= total + 2; tf += 0.25) { atk(o2, ANIM, ks, tf, null);
+    for (let c = 0; c < NCH; c++) { if (!Number.isFinite(o2[c])) bad++; const d = Math.abs(o2[c] - o1[c]), dd = Math.abs(o2[c] - 2 * o1[c] + o0[c]); if (c < 7) { vA = Math.max(vA, d); aA = Math.max(aA, dd); } else { vV = Math.max(vV, d); aV = Math.max(aV, dd); } }
+    o0.set(o1); o1.set(o2); }
+  ok('esquiva: movimento contínuo, sem saltos nem trancos', bad === 0 && vA <= 0.08 && vV <= 0.2 && aA <= 0.03 && aV <= 0.08, `ângulo ${vA.toFixed(3)}/${aA.toFixed(4)}, vetor ${vV.toFixed(3)}/${aV.toFixed(4)}`); }
 
 console.log('--- camadas ---');
 { const proibido = /\b(BABYLON|document|window|navigator)\b|Math\.random|from\s+['"]\.\/(render|input|debug|app|ui)[-.]/;

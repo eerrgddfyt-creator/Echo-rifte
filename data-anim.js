@@ -33,10 +33,21 @@ const A2 = [
   K(25, 0, ...IDLE),
 ];
 
+// Esquiva: agacha e enrola (startup), desliza compacto (invulnerável), levanta suave (recuperação).
+// A inclinação para o lado da fuga é somada no render, pois depende da direção do deslize.
+const DODGE = [
+  K(0, 0, ...IDLE),
+  K(3, 0.5, -0.14, 0, 0.10, 0.05, 0, -0.22, 0.20, 0.30, 0.30, 0.20, 0.10, 0.55, 1.00, -0.30, 0.28, 0.16),
+  K(7, 0.6, -0.20, 0, 0.16, 0, 0, -0.36, 0.30, 0.28, 0.20, -0.04, 0.25, 0.30, 0.85, -0.28, 0.18, -0.04),
+  K(11, 0.4, -0.15, 0, 0.10, 0, 0, -0.25, 0.22, 0.30, 0.26, 0.08, 0.15, 0.40, 1.00, -0.30, 0.24, 0.06),
+  K(23, 0, ...IDLE),
+];
+
 export const ANIM = {
   lagHand: 0.5, // ticks de atraso da mão em relação ao tronco (sensação de peso e arrasto)
   lagBlade: 1, // ticks de atraso da lâmina em relação ao tronco (a ponta chega por último)
   blend: 4, // ticks para sair da pose atual e entrar no golpe (sem estalo)
   hitDelay: [1.6, 1.65], // ticks entre o acerto da sim e a lâmina cruzar o alvo (recuo e flash esperam esse tempo; o teste confere)
   attacks: [{ keys: A1 }, { keys: A2 }],
+  dodge: { keys: DODGE }, // tempos: início do deslize = startup, fim da invulnerabilidade = startup + iframes, fim = total
 };

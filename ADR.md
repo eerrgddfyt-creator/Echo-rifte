@@ -14,3 +14,9 @@ Pedido do desenvolvedor: zips só com arquivos soltos. As camadas viram prefixos
 
 ## ADR-005: Animação procedural por pose
 Sem pipeline de 3D no celular, o VANGUARD é animado por código: keyframes em spline (velocidade contínua), braços por IK de 2 ossos, mistura com a corrida e um filtro final. Os dados ficam em data-anim.js. Trocar por modelo com esqueleto quando houver asset próprio.
+
+## ADR-006: Um caminho de dano e bot sem sorteio
+Todo dano passa por `applyDamage`: ali a invulnerabilidade da esquiva vira "esquiva perfeita" (sem dano, o golpe do bot é consumido). O bot usa só contadores (telégrafo 24 ticks, golpe 3, recuperação 20, pausa 45), então é determinístico e testável. O telégrafo de 400 ms vem da regra de justiça da Fase 0 (mínimo de 300 ms para reagir).
+
+## ADR-007: Teste de fumaça do render com Babylon simulado
+Sem navegador no ambiente de desenvolvimento, `render.test.js` roda o rig e a entrada contra um Babylon e um DOM simulados e "selados". Pega erro de código (nome errado, exceção, NaN, geometria inválida). Não valida a aparência nem a API real do Babylon: isso só o aparelho mostra.
