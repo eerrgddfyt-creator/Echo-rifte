@@ -1,5 +1,5 @@
 /** Combate puro: estados do golpe, hitbox em arco, dano e eventos. Sem render, sem DOM. */
-export const EV = { SWING: 'swing', HIT: 'hit', KO: 'ko', RESET: 'reset', DODGE: 'dodge', PERFECT: 'perfect', TELE: 'tele' };
+export const EV = { SWING: 'swing', HIT: 'hit', KO: 'ko', RESET: 'reset', DODGE: 'dodge', PERFECT: 'perfect', TELE: 'tele', ECHO: 'echo', ECHOHIT: 'echohit', ECHOHURT: 'echohurt', ECHOEND: 'echoend' };
 const TAU = Math.PI * 2;
 
 /** Escreve um evento no pool reutilizado (sem alocação). Se encher, descarta e conta. */
@@ -18,16 +18,19 @@ export function inArc(ax, az, yaw, tx, tz, tr, reach, arcDeg) {
 }
 
 /**
- * Único caminho de dano. who: 0 = jogador, 1 = alvo. A vida trava em 0 e o zero encerra a rodada.
- * Jogador invulnerável (janela da esquiva) não leva dano: vira esquiva perfeita. Retorna true se causou dano.
+ * Único caminho de dano. who: 0 = jogador, 1 = alvo; src: 0 = golpe do jogador/bot, 1 = golpe da cópia do ECHO.
+ * A vida trava em 0 e o zero encerra a rodada. Jogador invulnerável (janela da esquiva) não leva dano: vira esquiva perfeita.
+ * Retorna true se causou dano.
  */
-export function applyDamage(w, who, amount, step = 0) {
+export function applyDamage(w, who, amount, step = 0, src = 0) {
   const e = who ? w.target : w.player;
   if (w.phase !== 'fight' || e.hp <= 0) return false;
   if (!who && e.invul) { w.stats.perfect++; emit(w, EV.PERFECT, 0); return false; }
-  e.hp = Math.max(0, e.hp - amount);
-  if (!who) w.stats.taken++;
-  emit(w, EV.HIT, who, step, amount);
+  const dealt = Math.min(e.hp, amount);
+  e.hp -= dealt;
+  if (e.hp < 1e-9) e.hp = 0;
+  if (!who) w.stats.taken++; else if (src) w.stats.dmgEcho += dealt; else w.stats.dmgPlayer += dealt;
+  if (who && src) emit(w, EV.ECHOHIT, step, 0, dealt); else emit(w, EV.HIT, who, step, amount);
   if (e.hp === 0) { w.phase = 'ended'; w.endTick = w.tick; w.stats.kos++; emit(w, EV.KO, who); }
   return true;
 }

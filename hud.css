@@ -40,3 +40,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hi
 .btn.dodge.cool{border-color:var(--g2);color:var(--metal)}
 .btn.dodge.cool::after{opacity:.75}
 .toast{position:absolute;top:74px;left:0;right:0;margin:0;text-align:center;font:600 13px/1.2 system-ui,sans-serif;color:var(--ink)}
+
+/* M5: ECHO (gelo = só para o ECHO) */
+.btn.echo{width:70px;height:70px;right:calc(36px + env(safe-area-inset-right));bottom:calc(142px + env(safe-area-inset-bottom));border-color:var(--echo);color:var(--echo)}
+.btn.echo svg{width:34px;height:34px}
+.btn.echo::after{content:'';position:absolute;inset:-6px;border-radius:50%;background:conic-gradient(var(--echo) calc(var(--cd,100) * 1%),transparent 0);-webkit-mask:radial-gradient(circle,transparent 62%,#000 64%);mask:radial-gradient(circle,transparent 62%,#000 64%);opacity:0;transition:opacity .15s;pointer-events:none}
+.btn.echo.cool{border-color:var(--g2);color:var(--metal)}
+.btn.echo.cool::after{opacity:.8}
+.btn.echo.live{background:rgba(127,214,232,.25)}
+.btn.echo.on{background:rgba(127,214,232,.8);color:var(--bg)}
+.hp .pips{display:flex;gap:4px;margin-top:4px;font-style:normal}
+.hp .pips b{width:14px;height:4px;background:var(--echo)}
+.hp .pips b.off{background:var(--g2)}

@@ -6,9 +6,6 @@
 <meta name="theme-color" content="#0B0C0E">
 <title>ECHO//RIFT</title>
 <link rel="stylesheet" href="hud.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&display=swap">
 <!-- Versão do Babylon fixada aqui. Se a primeira não carregar, tenta a 9.29.0. O painel mostra a versão que rodou. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babylonjs/9.35.0/babylon.js"></script>
 <script>window.BABYLON||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/babylonjs/9.29.0/babylon.js"><\/script>')</script>
@@ -16,14 +13,6 @@
 <body>
 <canvas id="c"></canvas>
 <div id="ui"></div>
-<script type="module">
-// Entrada: o menu abre primeiro e PLAY carrega o jogo (app-boot.js, sem alterações).
-// index.html?jogo pula o menu. Se o menu falhar, o jogo abre direto.
-const boot = () => import('./app-boot.js');
-if (new URLSearchParams(location.search).has('jogo')) boot();
-else import('./ui-menu.js')
-  .then((m) => m.showMenu({ onStart: () => (window.BABYLON ? boot() : Promise.reject(new Error('O Babylon não carregou. Confira a conexão.'))) }))
-  .catch((e) => { console.error(e); const r = document.getElementById('mn'); if (r) r.remove(); boot(); });
-</script>
+<script type="module" src="app-boot.js"></script>
 </body>
 </html>
