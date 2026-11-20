@@ -36,17 +36,6 @@ export const VANGUARD = {
     pause: 45, // ticks entre o fim da recuperação e o próximo telégrafo
     damage: 10, reach: 2.0, arcDeg: 100, // dano; alcance (centro do bot até a borda do jogador); arco
     grace: 60, // ticks de calma após reiniciar ou trocar o modo do alvo
-    retarget: 1, // m. O bot só troca de alvo (jogador ou cópia do ECHO) se o outro estiver pelo menos isto mais perto
-  },
-  echo: {
-    ticks: 132, // ticks gravados (2,2 s). A reprodução dura o mesmo tempo.
-    minClip: 30, // ticks gravados mínimos para poder ativar (no começo da rodada ainda não há o que repetir)
-    telegraph: 18, // ticks em que a cópia aparece sem agir e sem poder ser atingida (18 = 300 ms)
-    damageMul: 0.5, // fração do dano do jogador que a cópia causa
-    integrity: 2, // acertos do bot para destruir a cópia
-    cooldown: 840, // ticks de recarga, contados da ativação (840 = 14 s)
-    anchor: 'A', // 'A': a cópia nasce onde você estava há 2,2 s. 'B': nasce na sua posição atual e repete o mesmo trajeto
-    relevantPath: 3, // m de trajeto que contam como "deslocamento relevante" no relatório
   },
   dummy: { orbitSpeed: 2.5 }, // alvo circular: velocidade em m/s (o raio é o da posição atual).
 };

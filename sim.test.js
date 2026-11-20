@@ -10,8 +10,6 @@ import { applyDamage, inArc } from './sim-combat.js';
 import { setDummyMode } from './sim-dummy.js';
 import { CH, NCH, ARM, atk, loco, solveArm, qFromTo } from './render-pose.js';
 import { ANIM } from './data-anim.js';
-import { F } from './sim-echo.js';
-import { resolveBotHit, stepBot, BOT } from './sim-bot.js';
 
 let falhas = 0;
 const ok = (nome, cond, info = '') => { console.log(`${cond ? 'OK   ' : 'FALHA'} ${nome}${info ? ' (' + info + ')' : ''}`); if (!cond) falhas++; };
@@ -191,128 +189,6 @@ const cena = (atkEm, dodEm, n = 40) => { const w = novo(); perto(w, 1.6); let d 
   const f = (w, r, i) => { if (i % 250 === 0) perto(w, 1.5); stepWorld(w, { mx: r() * 2 - 1, mz: r() * 2 - 1, attack: r() < 0.15, dodge: r() < 0.1 }); w.nev = 0; };
   for (let i = 0; i < 8000; i++) { f(a, r1, i); f(b, r2, i); }
   ok('determinismo com bot e esquiva: mesmas entradas, mesmo estado', snap(a) === snap(b) && JSON.stringify(a.stats) === JSON.stringify(b.stats)); }
-
-console.log('--- ECHO (M5) ---');
-const ek = VANGUARD.echo;
-const quadroDe = (p) => [p.x, p.z, p.yaw, p.st, p.step, p.t, p.dt, p.ddx, p.ddz, p.dox, p.doz, p.vx, p.vz];
-const fantasma = (g) => [g.x, g.z, g.yaw, g.st, g.step, g.t, g.dt, g.ddx, g.ddz, g.dox, g.doz, g.vx, g.vz];
-const mundoEcho = () => { const w = novo(); w.target.hp = 1e9; return w; }; // alvo que não morre: o reinício não atrapalha a gravação
-const treino = (seed) => { const rnd = mulberry32(seed); let mx = 0, mz = 0, hold = 0;
-  return (w, extra = {}) => { if (--hold <= 0) { hold = 1 + Math.floor(rnd() * 25); mx = rnd() < 0.3 ? 0 : rnd() * 2 - 1; mz = rnd() < 0.3 ? 0 : rnd() * 2 - 1; }
-    stepWorld(w, { mx, mz, attack: rnd() < 0.08, dodge: rnd() < 0.05, ...extra }); w.nev = 0; return quadroDe(w.player); }; };
-const difs = (a, b) => { let n = 0; for (let i = 0; i < a.length; i++) if (!Object.is(a[i], b[i])) n++; return n; };
-{ const w = mundoEcho(), tr = treino(5150), hist = [];
-  for (let i = 0; i < 400; i++) hist.push(tr(w, { echo: i === 300 }));
-  const e = w.echo; let mal = 0;
-  for (let i = 0; i < ek.ticks; i++) mal += difs(Array.from(e.clip.subarray(i * F, i * F + F)), hist[300 - ek.ticks + i]);
-  ok(`gravação: exatamente os últimos ${ek.ticks} ticks, em ordem, depois de o anel dar a volta`, e.len === ek.ticks && mal === 0, `diferenças ${mal}`); }
-{ const w = mundoEcho(), tr = treino(77), hist = []; let aos20 = -1;
-  for (let i = 0; i < 80; i++) { hist.push(tr(w, { echo: i === 20 || i === 50 })); if (i === 20) aos20 = w.stats.echos; }
-  const e = w.echo; let mal = 0;
-  for (let i = 0; i < 50; i++) mal += difs(Array.from(e.clip.subarray(i * F, i * F + F)), hist[i]);
-  ok(`sem ${ek.minClip} ticks gravados o ECHO não ativa`, aos20 === 0);
-  ok('no começo da rodada o ECHO usa só o que foi gravado (50 ticks)', w.stats.echos === 1 && e.len === 50 && mal === 0, `len ${e.len}, diferenças ${mal}`); }
-{ const w = mundoEcho(), tr = treino(2468), hist = [], N = 200, T = ek.telegraph, L = ek.ticks; w.params.echo.cooldown = 10;
-  let malT = 0, malP = 0, fim = -1, faseErrada = 0;
-  for (let i = 0; i < 420; i++) {
-    hist.push(tr(w, { echo: i === N || i === 360 }));
-    const e = w.echo;
-    if (i >= N && i < N + T && (e.phase !== 1 || difs(fantasma(e.g).slice(0, 3), hist[N - L].slice(0, 3)) !== 0)) malT++;
-    if (i >= N + T && i < N + T + L) { if (e.phase !== 2) faseErrada++; malP += difs(fantasma(e.g), hist[N - L + (i - N - T)]); }
-    if (fim < 0 && w.stats.echoExpired === 1) fim = i;
-  }
-  const e2 = w.echo; let malClip2 = 0;
-  for (let i = 0; i < L; i++) malClip2 += difs(Array.from(e2.clip.subarray(i * F, i * F + F)), hist[360 - L + i]);
-  ok(`telégrafo de ${T} ticks (${Math.round((T * 1000) / 60)} ms): cópia parada no 1º quadro e ainda sem poder ser atingida`, malT === 0, malT + ' violações');
-  ok(`reprodução idêntica à gravação (${L} quadros, 13 campos, diferença zero)`, malP === 0 && faseErrada === 0, `diferenças ${malP}`);
-  ok(`a cópia some ao fim da reprodução (tick ${N + T + L})`, fim === N + T + L, 'tick ' + fim);
-  ok('sem eco de eco: a 2ª gravação é só o que o jogador fez, mesmo com a cópia atuando', malClip2 === 0 && w.stats.echos === 2, `diferenças ${malClip2}`); }
-{ const w = mundoEcho(); for (let i = 0; i < 60; i++) passo(w, {}); passo(w, { echo: true }); eventos(w);
-  const t = w.target, g = w.echo.g;
-  const golpe = () => { t.x = g.x + 1.5; t.z = g.z; t.yaw = Math.atan2(g.x - t.x, g.z - t.z); t.bst = BOT.STRIKE; t.bt = 0; t.bhit = false; t.bhitG = false; resolveBotHit(w); t.bst = BOT.CHASE; return eventos(w); };
-  const durante = golpe();
-  ok('telégrafo: golpe do bot não atinge a cópia', w.echo.phase === 1 && w.echo.hp === ek.integrity && !durante.some((e) => e.startsWith('echohurt')));
-  for (let i = 0; i < ek.telegraph; i++) passo(w, {});
-  eventos(w);
-  const a = golpe(), b = golpe();
-  ok(`reprodução: 1º golpe do bot tira 1 de integridade (de ${ek.integrity})`, a.includes('echohurt:' + (ek.integrity - 1)) && !a.some((e) => e.startsWith('echoend')), a.join(' '));
-  ok(`${ek.integrity} golpes do bot destroem a cópia`, b.includes('echohurt:0') && b.includes('echoend:1') && w.echo.phase === 0 && w.stats.echoDestroyed === 1, b.join(' ')); }
-{ const w = novo(); perto(w, 1.6); const q = [];
-  for (let i = 0; i < 160; i++) { passo(w, { attack: i === 0 || i === 14, echo: i === 60 }); for (let j = 0; j < w.nev; j++) { const e = w.events[j]; if (e.type === 'echohit') q.push([i, e.a, e.c]); } w.nev = 0; }
-  ok(`a cópia repete os 2 golpes com ${ek.damageMul * 100}% do dano (4 e 6), 1 acerto por golpe, e conta no relatório`, JSON.stringify(q) === JSON.stringify([[85, 0, 4], [98, 1, 6]]) && w.stats.dmgEcho === 10 && w.stats.dmgPlayer === 20 && w.target.hp === 70 && w.stats.echoRelevant === 1, JSON.stringify(q) + `, dano você ${w.stats.dmgPlayer} / ECHO ${w.stats.dmgEcho}`); }
-{ const w = mundoEcho(), q = [];
-  for (let i = 0; i < 1000; i++) { passo(w, { echo: true }); if (eventos(w).includes('echo:0')) q.push(i); }
-  ok(`recarga: a próxima ativação só ${ek.cooldown} ticks (14 s) depois`, q.length === 2 && q[1] - q[0] === ek.cooldown, 'ticks ' + q); }
-{ const w = mundoEcho(); w.params.echo.cooldown = 50; const q = []; let viol = 0;
-  for (let i = 0; i < 400; i++) { const antes = w.echo.phase; passo(w, { echo: true }); if (eventos(w).includes('echo:0')) { q.push(i); if (antes !== 0) viol++; } }
-  ok('uma cópia por vez: nunca ativa com outra viva, mesmo com a recarga curta', viol === 0 && q.length >= 3, 'ativações nos ticks ' + q); }
-{ const w = mundoEcho(), tr = treino(31); w.params.echo.anchor = 'B';
-  for (let i = 0; i < 140; i++) tr(w, { echo: i === 139 });
-  const e = w.echo, p = w.player, c = e.clip, ox = p.x - c[0], oz = p.z - c[1];
-  const a = w.arena; let ok1 = Math.hypot(e.g.x - p.x, e.g.z - p.z) < 1e-9, mal = 0, vistos = 0;
-  for (let j = 0; j < e.len; j++) {
-    const ex = c[j * F] + ox, ez = c[j * F + 1] + oz;
-    if (a.normals.every((n) => ex * n.x + ez * n.z + p.r < a.apothem - 1e-6)) { vistos++; for (let i = 0; i < ek.telegraph + j + 1 && j > -1; i++) { /* avança até o quadro j */ } }
-  }
-  const alvo = []; for (let i = 0; i < ek.telegraph + e.len; i++) { tr(w); if (e.phase === 2) alvo.push([e.t - 1, e.g.x, e.g.z]); }
-  for (const [j, gx, gz] of alvo) { const ex = c[j * F] + ox, ez = c[j * F + 1] + oz; if (a.normals.every((n) => ex * n.x + ez * n.z + p.r < a.apothem - 1e-6) && Math.hypot(gx - ex, gz - ez) > 1e-9) mal++; }
-  ok('ancoragem B: a cópia nasce na posição atual e repete o mesmo trajeto (dentro da arena)', ok1 && mal === 0 && vistos > 0, `posição inicial ok ${ok1}, quadros fora do lugar ${mal}`); }
-{ const w = novo(); for (let i = 0; i < 60; i++) passo(w, {}); passo(w, { echo: true }); applyDamage(w, 1, 1e9); w.nev = 0;
-  const antes = w.stats.resets; let g = 0; while (w.stats.resets === antes && g++ < 300) passo(w, {});
-  const e = w.echo; ok('reinício limpa a cópia, a gravação e a recarga', e.phase === 0 && e.count === 0 && e.cd === 0 && e.len === 0 && e.hp === 0); }
-{ const w = novo(), t = w.target, p = w.player, e = w.echo; setDummyMode(w, 'perseguidor'); e.phase = 2; t.x = 0; t.z = 0; t.bcd = 99;
-  const pos = (dp, dg) => { p.x = dp; p.z = 0; e.g.x = -dg; e.g.z = 0; };
-  const alvo = () => { stepBot(w, 0); return t.tgt; };
-  pos(3.0, 2.6); const a = alvo(); pos(3.0, 1.9); const b = alvo(); pos(2.5, 2.0); const c = alvo(); pos(1.0, 2.5); const d = alvo();
-  ok('bot troca de alvo só com 1 m de vantagem (histerese, sem tremer entre jogador e cópia)', a === 0 && b === 1 && c === 1 && d === 0, `${a}${b}${c}${d}`); }
-{ const w = novo(), e = w.echo, t = w.target; setDummyMode(w, 'perseguidor');
-  for (let i = 0; i < 100; i++) { e.clip[i * F] = -3; e.clip[i * F + 1] = -3; e.clip[i * F + 6] = -1; }
-  e.len = 100; e.phase = 2; e.t = 0; e.hp = 2; e.g.r = 0.45; t.bcd = 99;
-  const d0 = Math.hypot(t.x + 3, t.z + 3); for (let i = 0; i < 30; i++) { passo(w, {}); eventos(w); }
-  ok('com a cópia mais perto que o jogador, o bot corre atrás da cópia', t.tgt === 1 && Math.hypot(t.x + 3, t.z + 3) < d0 - 1.5, `distância ${d0.toFixed(2)} -> ${Math.hypot(t.x + 3, t.z + 3).toFixed(2)} m`); }
-{ const w = novo(), e = w.echo, t = w.target, p = w.player; setDummyMode(w, 'perseguidor');
-  for (let i = 0; i < ek.ticks; i++) { e.clip[i * F] = 4.2; e.clip[i * F + 1] = 0; e.clip[i * F + 2] = Math.PI / 2; e.clip[i * F + 6] = -1; }
-  e.len = ek.ticks; e.phase = 2; e.t = 0; e.hp = ek.integrity; e.g.r = p.r; e.g.x = e.g.px = 4.2; t.bcd = 0;
-  let fim = -1, golpes = 0;
-  for (let i = 0; i < ek.ticks + 10 && fim < 0; i++) { passo(w, {}); for (let j = 0; j < w.nev; j++) { const ev = w.events[j]; if (ev.type === 'echoend' && ev.a === 1) fim = i; if (ev.type === 'echohurt') golpes++; } w.nev = 0; }
-  ok(`fluxo real: o bot persegue a cópia parada, telegrafa e a destrói com ${ek.integrity} golpes`, fim > 0 && golpes === ek.integrity && w.stats.echoDestroyed === 1 && p.hp === 100, `destruída no tick ${fim}, jogador intacto (vida ${p.hp})`); }
-{ // fuzz do M5: ECHO com bot, esquiva e golpes; ancoragens A e B; modos do alvo trocando
-  const rnd = mulberry32(909), w = novo(), { arena } = w, tol = 1e-6, v = { nan: 0, fora: 0, estado: 0, vida: 0, dentro: 0, ev: 0, tele: 0, stats: 0 };
-  const modos = ['perseguidor', 'circular', 'parado', 'perseguidor'];
-  let mx = 0, mz = 0, hold = 0, trocas = 0, tgtAnt = 0;
-  setDummyMode(w, 'perseguidor');
-  for (let i = 0; i < 100000; i++) {
-    if (i % 5000 === 0) { const b = (i / 5000) | 0; setDummyMode(w, modos[b % 4]); w.params.echo.anchor = b % 2 ? 'B' : 'A'; w.params.bot.pause = b % 2 ? 5 : 45; w.params.bot.recovery = b % 2 ? 6 : 20; } // blocos ímpares: bot agressivo
-    if (i % 300 === 0) perto(w, 1 + rnd() * 2);
-    if (--hold <= 0) { hold = 1 + Math.floor(rnd() * 30); mx = rnd() < 0.3 ? 0 : rnd() * 2 - 1; mz = rnd() < 0.3 ? 0 : rnd() * 2 - 1; }
-    stepWorld(w, { mx, mz, attack: rnd() < 0.1, dodge: rnd() < 0.06, echo: rnd() < 0.04 });
-    const p = w.player, t = w.target, e = w.echo, g = e.g;
-    if (![p.x, p.z, t.x, t.z, g.x, g.z, g.yaw].every(Number.isFinite)) v.nan++;
-    if (e.phase > 0 && arena.normals.some((n) => g.x * n.x + g.z * n.z + g.r > arena.apothem + tol)) v.fora++;
-    if (e.phase < 0 || e.phase > 2 || e.hp < 0 || e.hp > w.params.echo.integrity || e.cd < 0 || e.cd > w.params.echo.cooldown || e.count > w.params.echo.ticks || (e.phase > 0 && e.len < w.params.echo.minClip)) v.estado++;
-    if (p.hp < 0 || p.hp > 100 || t.hp < 0 || t.hp > 100) v.vida++;
-    if (Math.hypot(p.x - t.x, p.z - t.z) < p.r + t.r - tol) v.dentro++;
-    if (w.nev > w.events.length) v.ev++;
-    let feriu = false; for (let j = 0; j < w.nev; j++) if (w.events[j].type === 'echohurt') feriu = true;
-    if (feriu && e.phase === 1) v.tele++;
-    if (t.tgt !== tgtAnt) { trocas++; tgtAnt = t.tgt; }
-    w.nev = 0;
-  }
-  const s = w.stats;
-  if (s.echoDestroyed + s.echoExpired > s.echos || s.echoRelevant > s.echos || s.dmgEcho < 0 || s.echoHits < 0) v.stats++;
-  ok('fuzz M5 (100k ticks): sem NaN', v.nan === 0, v.nan + ' violações');
-  ok('fuzz M5: a cópia sempre dentro da arena (ancoragens A e B)', v.fora === 0, v.fora + ' violações');
-  ok('fuzz M5: estado do ECHO sempre válido (fase, integridade, recarga, gravação)', v.estado === 0, v.estado + ' violações');
-  ok('fuzz M5: vida entre 0 e 100 e ninguém se atravessa', v.vida === 0 && v.dentro === 0, `${v.vida} + ${v.dentro} violações`);
-  ok('fuzz M5: a cópia nunca é atingida durante o telégrafo', v.tele === 0, v.tele + ' violações');
-  ok('fuzz M5: fila de eventos limitada e sem perda', v.ev === 0 && s.drops === 0, `descartados ${s.drops}`);
-  ok('fuzz M5: contadores do relatório coerentes', v.stats === 0, `ECHOs ${s.echos}, relevantes ${s.echoRelevant}, destruídos ${s.echoDestroyed}, expirados ${s.echoExpired}`);
-  ok('fuzz M5: o ECHO foi exercitado de verdade (ativações, acertos da cópia, cópia destruída, bot trocando de alvo)', s.echos > 100 && s.echoHits > 20 && s.echoDestroyed >= 1 && trocas > 5, `ECHOs ${s.echos}, acertos da cópia ${s.echoHits}, destruídas ${s.echoDestroyed}, trocas de alvo ${trocas}`); }
-{ const a = novo(), b = novo(), r1 = mulberry32(21), r2 = mulberry32(21); setDummyMode(a, 'perseguidor'); setDummyMode(b, 'perseguidor');
-  const f = (w, r, i) => { if (i % 250 === 0) perto(w, 1.5); stepWorld(w, { mx: r() * 2 - 1, mz: r() * 2 - 1, attack: r() < 0.15, dodge: r() < 0.1, echo: r() < 0.05 }); w.nev = 0; };
-  for (let i = 0; i < 12000; i++) { f(a, r1, i); f(b, r2, i); }
-  const se = (w) => JSON.stringify({ s: snap(w), e: [w.echo.phase, w.echo.t, w.echo.len, w.echo.hp, w.echo.cd, w.echo.count, w.echo.head, Array.from(w.echo.rec.subarray(0, 52))], st: w.stats });
-  ok('determinismo com ECHO: mesmas entradas, mesmo estado (inclusive a gravação)', se(a) === se(b)); }
 
 console.log('--- animação (matemática pura) ---');
 { const idle = new Float64Array(NCH); loco(idle, 0, 0, 0, 0);

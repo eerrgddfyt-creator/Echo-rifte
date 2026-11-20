@@ -21,11 +21,10 @@ class C3 {
   static Black() { return new C3(); }
 }
 class Q4 { constructor() { this.x = 0; this.y = 0; this.z = 0; this.w = 1; Object.seal(this); } }
-const mats = [];
-class Base { constructor(name) { this.name = name; this.parent = null; this.position = new V3(); this.rotation = new V3(); this.scaling = new V3(1, 1, 1); this.rotationQuaternion = null; this.enabled = true; nodes.push(this); } setEnabled(v) { this.enabled = v; } }
+class Base { constructor(name) { this.name = name; this.parent = null; this.position = new V3(); this.rotation = new V3(); this.scaling = new V3(1, 1, 1); this.rotationQuaternion = null; nodes.push(this); } }
 class TransformNode extends Base { constructor(n) { super(n); Object.seal(this); } }
 class Mesh extends Base { constructor(n) { super(n); this.material = null; this.visibility = 1; this.isVisible = true; this.isPickable = true; this.geometry = null; Object.seal(this); } }
-class StandardMaterial { constructor(n) { this.name = n; this.diffuseColor = new C3(); this.specularColor = new C3(); this.emissiveColor = new C3(); this.disableLighting = false; this.alpha = 1; this.backFaceCulling = true; Object.seal(this); mats.push(this); } }
+class StandardMaterial { constructor(n) { this.name = n; this.diffuseColor = new C3(); this.specularColor = new C3(); this.emissiveColor = new C3(); this.disableLighting = false; this.alpha = 1; this.backFaceCulling = true; Object.seal(this); } }
 class VertexData {
   constructor() { this.positions = null; this.normals = null; this.uvs = null; this.indices = null; Object.seal(this); }
   applyToMesh(m) {
@@ -45,15 +44,13 @@ globalThis.window = { BABYLON };
 // ---------- 1. Rig animado dirigido pela sim real ----------
 const params = JSON.parse(JSON.stringify(VANGUARD));
 const w = createWorld({ arenaData: ARENA_01, params });
-const player = createRig({}, 'player', params), target = createRig({}, 'target', params), echo = createRig({}, 'ghost', params);
-echo.hide();
-const ghostRoot = nodes.find((n) => n.name === 'ghost'), afters = nodes.filter((n) => n.name === 'after');
+const player = createRig({}, 'player', params), target = createRig({}, 'target', params);
 const por = (n) => nodes.filter((x) => x.name === n);
 const slashes = por('slash'), trail = por('trail')[0], wedges = por('wedge'), body = por('body')[0], ring = por('ring').find((m) => m.parent && m.parent.name === 'player');
-ok('rig: geometrias dos arcos (jogador e cópia) e dos setores válidas', slashes.length === 4 && wedges.length === 2 && slashes.every((m) => m.geometry.triangles === 24) && wedges.every((m) => m.geometry.triangles === 14), `meshes criadas: ${nodes.filter((n) => n instanceof Mesh).length}`);
+ok('rig: geometrias dos arcos e dos setores válidas', slashes.length === 2 && wedges.length === 2 && slashes.every((m) => m.geometry.triangles === 24) && wedges.every((m) => m.geometry.triangles === 14), `meshes criadas: ${nodes.filter((n) => n instanceof Mesh).length}`);
 
 const rnd = mulberry32(31337);
-const cobre = { copia: false, copiaSumiu: false, residuais: false, golpe: false, deslize: false, setor: false, setorCheio: false, queda: false, levantou: false, pulso: false, flashDano: false, jogadorCaiu: false };
+const cobre = { golpe: false, deslize: false, setor: false, setorCheio: false, queda: false, levantou: false, pulso: false, flashDano: false, jogadorCaiu: false };
 let ruins = 0, excecao = null, mx = 0, mz = 0, hold = 0, depoisReset = 0;
 const pend = { t: -1, dx: 0, dz: 1, ko: false };
 const midMat = por('p').map((m) => m.material).find((m) => m && m.name === 'm#4A4F57' && !m.disableLighting && m.diffuseColor.r > 0.25);
@@ -66,27 +63,22 @@ const checa = () => {
     if (!v.every(Number.isFinite) || (q && !(Math.abs(Math.hypot(q.x, q.y, q.z, q.w) - 1) < 1e-4)) || (n.visibility !== undefined && !(n.visibility >= -1e-9 && n.visibility <= 1 + 1e-9))) ruins++;
   }
 };
-let echoOn = false;
 const quadro = (f, entrada) => {
   stepWorld(w, entrada);
-  const p = w.player, t = w.target, E = w.echo, g = E.g, alpha = [0, 0.25, 0.5, 0.75][f % 4];
+  const p = w.player, t = w.target, alpha = [0, 0.25, 0.5, 0.75][f % 4];
   for (let i = 0; i < w.nev; i++) { // mesmo roteamento de eventos do app-boot.js
     const e = w.events[i];
     if (e.type === 'hit') {
       const dx = e.a === 1 ? t.x - p.x : p.x - t.x, dz = e.a === 1 ? t.z - p.z : p.z - t.z, d = Math.hypot(dx, dz) || 1;
       if (e.a === 1) { pend.t = 0.027; pend.dx = dx / d; pend.dz = dz / d; } else { player.hurt(dx / d, dz / d); cobre.flashDano = true; }
-    } else if (e.type === 'echohurt') { echo.hurt(g.x - t.x, g.z - t.z); }
-    else if (e.type === 'perfect') { player.perfect(); cobre.pulso = true; }
+    } else if (e.type === 'perfect') { player.perfect(); cobre.pulso = true; }
     else if (e.type === 'ko') { if (e.a === 1) pend.ko = true; else { player.ko(); cobre.jogadorCaiu = true; } }
-    else if (e.type === 'reset') { target.reset(); player.reset(); echo.reset(); pend.t = -1; pend.ko = false; depoisReset = 20; }
+    else if (e.type === 'reset') { target.reset(); player.reset(); pend.t = -1; pend.ko = false; depoisReset = 20; }
   }
   w.nev = 0;
   if (pend.t >= 0 && (pend.t -= dt) < 0) { target.hit(pend.dx, pend.dz); if (pend.ko) target.ko(); }
   player.update(p.x, p.z, p.yaw, p, alpha, dt, params.maxSpeed);
   target.update(t.x, t.z, t.yaw, t, dt, alpha);
-  if ((E.phase > 0) !== echoOn) { echoOn = E.phase > 0; if (echoOn) echo.show(); else { echo.hide(); cobre.copiaSumiu = true; } }
-  if (echoOn) { const left = E.len - E.t, fade = E.phase === 1 ? E.t / params.echo.telegraph : left <= 30 && Math.floor(left / 6) % 2 === 1 ? 0.5 : 1; echo.update(g.x, g.z, g.yaw, g, alpha, dt, params.maxSpeed, fade); if (ghostRoot.enabled) cobre.copia = true; if (afters.some((m) => m.isVisible && Number.isFinite(m.position.x) && Math.hypot(m.position.x - g.x, m.position.z - g.z) > 0.3)) cobre.residuais = true; }
-  for (const m of mats) if (!(m.alpha >= -1e-9 && m.alpha <= 1 + 1e-9)) ruins++;
   checa();
   if (slashes.some((m) => m.isVisible && m.visibility > 0.3)) cobre.golpe = true;
   if (trail.isVisible && trail.visibility > 0.3) cobre.deslize = true;
@@ -103,7 +95,7 @@ try {
     if (f % 3000 === 0) setDummyMode(w, modos[(f / 3000) | 0]);
     if (f % 240 === 0) { const t = w.target, p = w.player, d = 1 + rnd() * 2; p.x = p.px = t.x - d; p.z = p.pz = t.z; }
     if (--hold <= 0) { hold = 1 + Math.floor(rnd() * 30); mx = rnd() < 0.3 ? 0 : rnd() * 2 - 1; mz = rnd() < 0.3 ? 0 : rnd() * 2 - 1; }
-    quadro(f, { mx, mz, attack: rnd() < 0.1, dodge: rnd() < 0.06, echo: rnd() < 0.03 });
+    quadro(f, { mx, mz, attack: rnd() < 0.1, dodge: rnd() < 0.06 });
   }
   setDummyMode(w, 'perseguidor'); // fase 2: jogador parado ao lado do bot até ser derrotado e a rodada reiniciar
   { const p = w.player, t = w.target; p.x = p.px = 0; p.z = p.pz = 0; t.x = t.px = 2; t.z = t.pz = 0; t.bcd = 0; }
@@ -112,7 +104,6 @@ try {
 ok(`rig: ${quadros} quadros dirigidos pela sim real, sem exceção`, excecao === null, excecao ? excecao.stack.split('\n').slice(0, 3).join(' | ') : 'ok');
 ok('rig: nenhuma posição, rotação, escala, quaternion ou transparência inválida', ruins === 0, ruins + ' violações');
 ok('rig: arco do golpe apareceu', cobre.golpe);
-ok('rig: cópia do ECHO apareceu, tinha imagens residuais e sumiu no fim', cobre.copia && cobre.residuais && cobre.copiaSumiu, `meshes da cópia: ${nodes.filter((n) => n instanceof Mesh).length}`);
 ok('rig: faixa do deslize apareceu', cobre.deslize);
 ok('rig: setor de telégrafo apareceu e encheu até o fim', cobre.setor && cobre.setorCheio);
 ok('rig: alvo caiu ao morrer e levantou no reinício', cobre.queda && cobre.levantou);
@@ -137,7 +128,6 @@ ok('entrada: J = golpe por 1 leitura só', j1 && !j2);
 fire('keydown', { key: ' ' }); ok('entrada: Espaço = golpe', inp.read().attack);
 fire('keydown', { key: 'k' }); r = inp.read(); ok('entrada: K = esquiva por 1 leitura só', r.dodge && !r.attack && !inp.read().dodge);
 fire('keydown', { key: 'Shift' }); ok('entrada: Shift = esquiva', inp.read().dodge);
-fire('keydown', { key: 'l' }); r = inp.read(); ok('entrada: L = ECHO por 1 leitura só', r.echo && !r.attack && !r.dodge && !inp.read().echo);
 fire('keydown', { key: 'j', repeat: true }); ok('entrada: tecla segurada não repete o golpe', !inp.read().attack);
 fire('keydown', { key: 'd' }); fire('keydown', { key: 'w' }); r = inp.read();
 ok('entrada: D e W = direita e fundo da tela', r.mx === 1 && r.mz === 1);
@@ -153,9 +143,7 @@ host.children[3].on.pointerdown({ preventDefault() {} }); r = inp.read();
 ok('entrada: botão de esquiva (toque)', r.dodge && !r.attack);
 host.children[2].on.pointerdown({ preventDefault() {} }); r = inp.read();
 ok('entrada: botão de golpe (toque)', r.attack && !r.dodge);
-host.children[4].on.pointerdown({ preventDefault() {} }); r = inp.read();
-ok('entrada: botão do ECHO (toque)', r.echo && !r.attack && !r.dodge);
-ok('entrada: botões com as classes certas (o HUD procura .btn.dodge e .btn.echo)', host.children[2].className === 'btn' && host.children[3].className === 'btn dodge' && host.children[4].className === 'btn echo');
+ok('entrada: botões com as classes certas (o HUD procura .btn.dodge)', host.children[3].className === 'btn dodge' && host.children[2].className === 'btn');
 
 console.log(falhas ? `\n${falhas} FALHA(S)` : '\nTodos os testes de fumaça passaram');
 setTimeout(() => process.exit(falhas ? 1 : 0), 150);

@@ -37,7 +37,7 @@ export function createOverlay({ host, engine, scene, params, world, onDummyMode 
     return JSON.stringify({
       quando: new Date().toISOString(), babylon: B.Engine.Version, gpu: gl.renderer || null,
       navegador: navigator.userAgent, tela: { w: innerWidth, h: innerHeight, dpr }, resolucao: LV[lvl][0],
-      primeiroQuadroMs: Math.round(first), ticks: world.tick, alvo: world.dummyMode, ancoraEcho: params.echo.anchor, combate: world.stats, ...stats(), erros: errors,
+      primeiroQuadroMs: Math.round(first), ticks: world.tick, alvo: world.dummyMode, combate: world.stats, ...stats(), erros: errors,
     }, null, 1);
   };
 
@@ -59,7 +59,6 @@ export function createOverlay({ host, engine, scene, params, world, onDummyMode 
     const m = MODOS[(MODOS.indexOf(world.dummyMode) + 1) % MODOS.length];
     onDummyMode(m); modeBtn.textContent = 'Alvo: ' + m;
   });
-  const ancBtn = btn('ECHO: A', () => { params.echo.anchor = params.echo.anchor === 'A' ? 'B' : 'A'; ancBtn.textContent = 'ECHO: ' + params.echo.anchor; });
   btn('Ajustes', () => { tune.hidden = !tune.hidden; });
   btn('Tela cheia', () => {
     if (document.fullscreenElement) { document.exitFullscreen(); return; }
@@ -77,10 +76,6 @@ export function createOverlay({ host, engine, scene, params, world, onDummyMode 
     ['Dano do bot', () => params.bot.damage, (v) => (params.bot.damage = v), 1, 30, 1],
     ['Telégrafo do bot (ticks)', () => params.bot.telegraph, (v) => (params.bot.telegraph = v), 12, 40, 1],
     ['Recarga da esquiva (ticks)', () => params.dodge.cooldown, (v) => (params.dodge.cooldown = v), 10, 120, 1],
-    ['Pausa do bot (ticks)', () => params.bot.pause, (v) => (params.bot.pause = v), 5, 90, 1],
-    ['Dano do ECHO (%)', () => Math.round(params.echo.damageMul * 100), (v) => (params.echo.damageMul = v / 100), 10, 100, 5],
-    ['Integridade do ECHO', () => params.echo.integrity, (v) => (params.echo.integrity = v), 1, 5, 1],
-    ['Recarga do ECHO (ticks)', () => params.echo.cooldown, (v) => (params.echo.cooldown = v), 60, 1200, 30],
   ]) {
     const lab = document.createElement('label'), txt = document.createTextNode(''), inp = document.createElement('input');
     inp.type = 'range'; inp.min = min; inp.max = max; inp.step = step; inp.value = get();
@@ -106,8 +101,6 @@ export function createOverlay({ host, engine, scene, params, world, onDummyMode 
         `heap ${s.heapMB ?? 'n/d'} MB  res ${LV[lvl][0]}  tick ${world.tick}\n` +
         `golpes ${c.swings}  acertos ${c.hits}  KO ${c.kos}  reinícios ${c.resets}\n` +
         `esquivas ${c.dodges}  perfeitas ${c.perfect}  sofridos ${c.taken}\n` +
-        `ECHO ${c.echos} (relev. ${c.echoRelevant})  destruídos ${c.echoDestroyed}  expirados ${c.echoExpired}\n` +
-        `dano: você ${Math.round(c.dmgPlayer)}  ECHO ${Math.round(c.dmgEcho)} (${c.dmgPlayer + c.dmgEcho > 0 ? Math.round((100 * c.dmgEcho) / (c.dmgPlayer + c.dmgEcho)) : 0}%)\n` +
         `Babylon ${B.Engine.Version}  1º quadro ${Math.round(first)} ms`;
       er.textContent = errors.map((e) => 'ERRO ' + e).join('\n');
     },

@@ -4,7 +4,7 @@ import { stepBot, BOT } from './sim-bot.js';
 export function setDummyMode(w, mode) {
   w.dummyMode = mode;
   const t = w.target;
-  t.bst = BOT.CHASE; t.bt = 0; t.bcd = w.params.bot.grace; t.bhit = false; t.bhitG = false; t.tgt = 0;
+  t.bst = BOT.CHASE; t.bt = 0; t.bcd = w.params.bot.grace; t.bhit = false;
   if (mode === 'circular') { t.ang = Math.atan2(t.z, t.x); t.rad = Math.min(8, Math.max(3, Math.hypot(t.x, t.z))); }
 }
 

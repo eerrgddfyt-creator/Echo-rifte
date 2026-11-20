@@ -21,5 +21,5 @@ Todo dano passa por `applyDamage`: ali a invulnerabilidade da esquiva vira "esqu
 ## ADR-007: Teste de fumaça do render com Babylon simulado
 Sem navegador no ambiente de desenvolvimento, `render.test.js` roda o rig e a entrada contra um Babylon e um DOM simulados e "selados". Pega erro de código (nome errado, exceção, NaN, geometria inválida). Não valida a aparência nem a API real do Babylon: isso só o aparelho mostra.
 
-## ADR-008: ECHO v1 = gravador em anel + replay de estado
-A sim grava o estado do jogador (posição, direção, estado do golpe e da esquiva) num anel de 132 ticks. Ao ativar, congela o clip e a cópia o reproduz quadro a quadro; os golpes dela são testados contra o mundo de agora, com dano reduzido. O clip é imutável e vem do histórico da própria sim, o que serve ao servidor autoritativo e aos replays do ECHO TRIALS. A cópia não é sólida e só pode ser atingida depois do telégrafo. O bot enxerga a cópia (histerese de 1 m) para que ela possa ser distração e ser destruída.
+## ADR-008: Menu inicial carregado antes do jogo, sem tocar no app-boot.js
+O `index.html` importa `ui-menu.js` primeiro e só faz `import('./app-boot.js')` quando o jogador toca em PLAY. O jogo não foi alterado, e `?jogo` pula o menu. O menu usa um Babylon próprio e leve (cena e canvas separados) e o descarta ao iniciar, então os dois nunca rodam juntos por muito tempo. Se o menu falhar ao carregar, o jogo abre direto. O CSS do menu fica todo sob `#mn` e o `menu.test.js` garante isso. Consequência: ainda não há volta ao menu; ela entra com a pausa.
