@@ -2,6 +2,7 @@ import { CH, NCH, loco, atk, solveArm, qFromTo } from './render-pose.js';
 import { ANIM } from './data-anim.js';
 
 const S = (u) => u * u * (3 - 2 * u);
+const GC = { r: 0.498, g: 0.839, b: 0.91 }, ZERO = { r: 0, g: 0, b: 0 }; // gelo (#7FD6E8): cor do ECHO
 const clamp01 = (u) => (u < 0 ? 0 : u > 1 ? 1 : u);
 
 /**
@@ -11,10 +12,14 @@ const clamp01 = (u) => (u < 0 ? 0 : u > 1 ? 1 : u);
  */
 export function createRig(scene, kind, params) {
   const B = window.BABYLON;
-  const mat = (h, flat) => {
+  const ghost = kind === 'ghost', gm = []; // cópia do ECHO: silhueta gelo chapada e translúcida (alpha base em gm)
+  const mat = (h, flat, a) => {
+    let alpha = 1;
+    if (ghost) { alpha = a !== undefined ? a : flat ? 0.75 : 0.42; h = flat ? '#D9F3F8' : '#7FD6E8'; flat = true; }
     const m = new B.StandardMaterial('m' + h, scene), c = B.Color3.FromHexString(h);
     m.diffuseColor = c; m.specularColor = B.Color3.Black();
     if (flat) { m.emissiveColor = c; m.disableLighting = true; } // cor chapada, sem brilho
+    if (ghost) { m.alpha = alpha; gm.push({ m, a: alpha }); }
     return m;
   };
   const node = (parent, x, y, z) => { const n = new B.TransformNode('n', scene); n.parent = parent; n.position.set(x, y, z); return n; };
@@ -26,9 +31,11 @@ export function createRig(scene, kind, params) {
   const root = new B.TransformNode(kind, scene);
 
   // contato com o chão: sombra barata + anel de identificação (branco = jogador, óxido = alvo)
-  const shadow = B.MeshBuilder.CreateDisc('shadow', { radius: 0.65, tessellation: 20 }, scene);
-  const sm = mat('#000000', true); sm.alpha = 0.35; sm.backFaceCulling = false;
-  shadow.material = sm; shadow.rotation.x = Math.PI / 2; shadow.parent = root; shadow.position.y = 0.01; shadow.isPickable = false;
+  if (!ghost) {
+    const shadow = B.MeshBuilder.CreateDisc('shadow', { radius: 0.65, tessellation: 20 }, scene);
+    const sm = mat('#000000', true); sm.alpha = 0.35; sm.backFaceCulling = false;
+    shadow.material = sm; shadow.rotation.x = Math.PI / 2; shadow.parent = root; shadow.position.y = 0.01; shadow.isPickable = false;
+  }
   const ring = B.MeshBuilder.CreateTorus('ring', { diameter: 1.3, thickness: 0.06, tessellation: 28 }, scene);
   ring.material = mat(kind === 'player' ? '#E8E6E1' : '#C4452D', true);
   ring.parent = root; ring.position.y = 0.04; ring.isPickable = false;
@@ -163,6 +170,16 @@ export function createRig(scene, kind, params) {
     const trail = B.MeshBuilder.CreateBox('trail', { width: 0.7, height: 0.02, depth: 1 }, scene);
     trail.material = mat('#E8E6E1', true); trail.position.y = 0.03; trail.isPickable = false; trail.isVisible = false;
 
+    // imagens residuais da cópia: duas silhuetas simples que ficam ~4 e ~8 quadros para trás
+    const capsule = (a) => {
+      const m = B.MeshBuilder.CreateCapsule('after', { radius: 0.32, height: 1.7 }, scene);
+      m.material = mat('#7FD6E8', true, a); m.position.y = 0.85; m.isPickable = false; m.isVisible = false;
+      return m;
+    };
+    const af1 = ghost ? capsule(0.22) : null, af2 = ghost ? capsule(0.12) : null;
+    const hx = new Float32Array(12), hz = new Float32Array(12);
+    let hi = 0;
+
     const dk = params.dodge;
     const PL = new Float32Array(NCH), PA = new Float32Array(NCH), PD = new Float32Array(NCH);
     const cur = new Float32Array(NCH), fromA = new Float32Array(NCH), fromD = new Float32Array(NCH), PF = new Float32Array(NCH);
@@ -171,7 +188,7 @@ export function createRig(scene, kind, params) {
     let rec = 0, rdx = 0, rdz = 1, flash = 0, pulse = 0, down = 0;
     return {
       /** x, z, yaw já interpolados; p = estado do jogador na sim; alpha = fração entre dois ticks. */
-      update(x, z, yaw, p, alpha, dt, vmax) {
+      update(x, z, yaw, p, alpha, dt, vmax, fade) {
         rec *= Math.exp(-dt * 8); flash *= Math.exp(-dt * 12); pulse *= Math.exp(-dt * 6);
         root.position.set(x + rdx * rec * 0.25, 0, z + rdz * rec * 0.25); root.rotation.y = yaw;
         time += dt;
@@ -224,10 +241,19 @@ export function createRig(scene, kind, params) {
         } else trail.isVisible = false;
 
         ring.scaling.x = ring.scaling.z = 1 + pulse * 0.9; ring.visibility = 1 - pulse * 0.4; // pulso da esquiva perfeita
-        const f = flash * 0.7; // flash de dano no corpo todo
-        dark.emissiveColor.r = dark.emissiveColor.g = dark.emissiveColor.b = f;
-        mid.emissiveColor.r = mid.emissiveColor.g = mid.emissiveColor.b = f;
+        const f = flash * 0.7, bc = ghost ? GC : ZERO, emD = dark.emissiveColor, emM = mid.emissiveColor; // flash de dano no corpo todo
+        emD.r = emM.r = bc.r + (1 - bc.r) * f; emD.g = emM.g = bc.g + (1 - bc.g) * f; emD.b = emM.b = bc.b + (1 - bc.b) * f;
+
+        if (ghost) {
+          const fd = fade === undefined ? 1 : fade;
+          for (let i = 0; i < gm.length; i++) gm[i].m.alpha = gm[i].a * fd; // aparece aos poucos e pisca antes de sumir
+          hx[hi] = x; hz[hi] = z; hi = (hi + 1) % 12; // hi aponta para o próximo; o último gravado é hi - 1
+          const i1 = (hi + 12 - 5) % 12, i2 = (hi + 12 - 9) % 12;
+          af1.position.x = hx[i1]; af1.position.z = hz[i1]; af2.position.x = hx[i2]; af2.position.z = hz[i2];
+        }
       },
+      show() { root.setEnabled(true); if (ghost) af1.isVisible = af2.isVisible = true; },
+      hide() { root.setEnabled(false); trail.isVisible = false; slashA.isVisible = slashB.isVisible = false; if (ghost) af1.isVisible = af2.isVisible = false; },
       hurt(dx, dz) { rdx = dx; rdz = dz; rec = 1; flash = 1; },
       perfect() { pulse = 1; },
       ko() { down = 1; },

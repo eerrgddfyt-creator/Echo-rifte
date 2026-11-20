@@ -3,12 +3,13 @@ import { EV, emit, stepCombat, resolveHit, moveMul, lungeStep } from './sim-comb
 import { stepDodge } from './sim-dodge.js';
 import { stepDummy } from './sim-dummy.js';
 import { resolveBotHit } from './sim-bot.js';
+import { createEcho, resetEcho, stepEcho, recordFrame } from './sim-echo.js';
 
 export const TICK_RATE = 60;
 export const DT = 1 / TICK_RATE;
 const EVENT_CAP = 24;
 
-/** @typedef {{mx:number, mz:number, attack?:boolean, dodge?:boolean}} InputFrame mx: +direita, mz: +fundo da tela; attack/dodge: borda do botão */
+/** @typedef {{mx:number, mz:number, attack?:boolean, dodge?:boolean, echo?:boolean}} InputFrame mx: +direita, mz: +fundo da tela; attack/dodge/echo: borda do botão */
 
 function initState(w) {
   const s = w.arenaData.spawn, k = w.params;
@@ -21,8 +22,9 @@ function initState(w) {
   };
   w.target = {
     x: s.target.x, z: s.target.z, px: s.target.x, pz: s.target.z, r: k.radius, hp: k.hp, ang: 0, rad: Math.hypot(s.target.x, s.target.z),
-    yaw: tyaw, pyaw: tyaw, bst: 0, bt: 0, bcd: k.bot.grace, bhit: false, // bot
+    yaw: tyaw, pyaw: tyaw, bst: 0, bt: 0, bcd: k.bot.grace, bhit: false, bhitG: false, tgt: 0, // bot (tgt: 0 jogador, 1 cópia)
   };
+  resetEcho(w.echo, k.radius);
 }
 
 /**
@@ -33,7 +35,11 @@ export function createWorld({ arenaData, params }) {
   const w = {
     arenaData, arena: createArena(arenaData), params, dummyMode: 'parado',
     events: Array.from({ length: EVENT_CAP }, () => ({ type: '', a: 0, b: 0, c: 0 })),
-    stats: { swings: 0, hits: 0, kos: 0, resets: 0, drops: 0, dodges: 0, perfect: 0, taken: 0 },
+    echo: createEcho(params.echo.ticks),
+    stats: {
+      swings: 0, hits: 0, kos: 0, resets: 0, drops: 0, dodges: 0, perfect: 0, taken: 0,
+      echos: 0, echoRelevant: 0, echoDestroyed: 0, echoExpired: 0, echoHits: 0, dmgPlayer: 0, dmgEcho: 0,
+    },
   };
   initState(w);
   return w;
@@ -83,7 +89,9 @@ export function stepWorld(w, input) {
 
   p.yaw = Math.atan2(t.x - p.x, t.z - p.z); // lock 1v1: sempre encara o alvo
   resolveHit(w);
+  stepEcho(w, input);
   resolveBotHit(w);
+  if (w.phase === 'fight') recordFrame(w);
 
   if (w.phase === 'ended' && w.tick - w.endTick >= k.resetDelay) { resetWorld(w); return; }
   w.tick++;
