@@ -23,4 +23,6 @@ const usados = [...src.matchAll(/\$\('#([\w-]+)/g)].map((m) => m[1]).filter((i) 
 const faltam = usados.filter((i) => !marcacao.includes(`id="${i}"`));
 assert.deepEqual(faltam, [], 'ids usados pelo JS e ausentes na marcação: ' + faltam.join(','));
 assert.ok(!/data-go="treino"/.test(marcacao), 'TRAINING deve estar indisponível');
+assert.ok(/data-open="shop"/.test(marcacao) && /id="shop"/.test(marcacao) && /id="shb"/.test(marcacao), 'LOJA abre a tela da loja');
+assert.ok(!/aria-disabled="true" data-i="shop"/.test(marcacao), 'LOJA deve estar disponível');
 console.log('menu.test.js: ok (' + sels.length + ' seletores escopados, ' + usados.length + ' ids conferidos)');

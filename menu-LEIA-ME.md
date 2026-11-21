@@ -7,7 +7,7 @@
 - O `index.html` abre o menu primeiro e só faz `import('./app-boot.js')` quando o jogador toca em PLAY.
 - `index.html?jogo` pula o menu. Se o menu falhar ao carregar, o jogo abre direto.
 - O menu usa um Babylon próprio e leve e o descarta ao iniciar. O CSS fica todo sob `#mn` (o `menu.test.js` confere).
-- Só PLAY está ativo. TRAINING, CUSTOMIZATION, LOJA e SETTINGS aparecem como "Em breve".
+- PLAY abre o jogo. LOJA abre uma tela vazia (só o fundo desenhado e "Nenhum item por enquanto."). TRAINING, CUSTOMIZATION e SETTINGS aparecem como "Em breve".
 - Ainda não há "voltar ao menu" a partir da partida: recarregue a página.
 
 ## Se o menu não aparecer e o jogo abrir direto
@@ -17,7 +17,7 @@
 
 ## Testar
 - `node menu.test.js` (sem navegador): CSS sem vazar para o jogo, arquivos, ligação do index.
-- No aparelho: logo e toque para entrar; cards (arrastar troca o foco, tocar abre); sons; PLAY mostra "loading", abre a arena e o menu some sem sobrar nada; joystick, golpe, esquiva e ECHO iguais ao M5; os outros 4 cards avisam "Ainda não disponível".
+- No aparelho: logo e toque para entrar; cards (arrastar troca o foco, tocar abre); sons; PLAY mostra "loading", abre a arena e o menu some sem sobrar nada; joystick, golpe, esquiva e ECHO iguais ao M5; LOJA abre a tela vazia e o botão Menu (ou Esc) volta; os outros 3 cards avisam "Ainda não disponível".
 
 ## Pendências
 - Nada disso rodou num navegador ainda.

@@ -3,7 +3,7 @@
  * Ligação com o jogo: index.html abre o menu primeiro e só carrega app-boot.js quando o jogador toca em PLAY
  * (app-boot.js não foi alterado). index.html?jogo pula o menu. Se o menu falhar ao carregar, o jogo abre direto.
  * O menu tem o próprio Babylon (cena leve com o VANGUARD real, via data-vanguard.js e render-rig.js) e o descarta ao iniciar.
- * Só PLAY está ativo: TRAINING, CUSTOMIZATION, LOJA e SETTINGS aparecem como "Em breve".
+ * Ativos: PLAY (abre o jogo) e LOJA (tela vazia). TRAINING, CUSTOMIZATION e SETTINGS aparecem como "Em breve".
  * Preferências em localStorage 'echorift.settings.v1' ({mute, volUI}). Licença dos 3 sons: A CONFIRMAR.
  */
 const MARKUP = `<canvas id="mc"></canvas>
@@ -15,7 +15,7 @@ const MARKUP = `<canvas id="mc"></canvas>
   <button class="mn-card pri" style="--ac:var(--echo)" data-go="duelo" data-snd="ok" data-i="play"><span class="lb">PLAY</span></button>
   <button class="mn-card" aria-disabled="true" data-i="train"><span class="lb">TRAINING</span><small>Em breve</small></button>
   <button class="mn-card" aria-disabled="true" data-i="custom"><span class="lb">CUSTOMIZATION</span><small>Em breve</small></button>
-  <button class="mn-card" aria-disabled="true" data-i="shop"><span class="lb">LOJA</span><small>Em breve</small></button>
+  <button class="mn-card" style="--ac:var(--echo)" data-open="shop" data-snd="ok" data-i="shop"><span class="lb">LOJA</span></button>
   <button class="mn-card" aria-disabled="true" data-i="set"><span class="lb">SETTINGS</span><small>Em breve</small></button>
 </nav>
 <div class="mn-char"><b>VANGUARD</b><span>Lâmina de um gume</span><span class="hint">Arraste ou use as setas</span></div>
@@ -25,6 +25,7 @@ const MARKUP = `<canvas id="mc"></canvas>
   <button class="mn-btn sm" id="rep"><span class="lb">Relatório</span></button>
 </div>
 <section class="mn-ds" id="ds"><div class="w"></div></section>
+<section class="mn-shop" id="shop" aria-label="Loja"><svg class="mn-shop-bg" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><polygon class="bd" points="0,0 250,0 170,400 0,400"/><polygon class="rg" points="624.7,236.8 586.8,274.7 533.2,274.7 495.3,236.8 495.3,183.2 533.2,145.3 586.8,145.3 624.7,183.2"/><polygon class="rg" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><polygon class="rg" points="735.5,282.7 632.7,385.5 487.3,385.5 384.5,282.7 384.5,137.3 487.3,34.5 632.7,34.5 735.5,137.3"/><polygon class="rg" points="791.0,305.7 655.7,441.0 464.3,441.0 329.0,305.7 329.0,114.3 464.3,-21.0 655.7,-21.0 791.0,114.3"/><polygon class="rg" points="846.4,328.6 678.6,496.4 441.4,496.4 273.6,328.6 273.6,91.4 441.4,-76.4 678.6,-76.4 846.4,91.4"/><polygon class="ec e1" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><polygon class="ec e2" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><polygon class="ec e3" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><path class="rf" d="M560 0V400"/><path class="sh" d="M240 292H800M240 324H800M280 286v12M340 286v12M400 286v12M460 286v12M520 286v12M580 286v12M640 286v12M700 286v12M760 286v12"/></svg><header class="mn-shop-hd"><button class="mn-btn sm" id="shb" data-rate=".88" data-i="back"><span class="lb">Menu</span></button><h2>LOJA</h2></header><p class="mn-shop-empty">Nenhum item por enquanto.</p></section>
 <p class="mn-toast mn-glass" id="toast" role="status" hidden></p>
 <div class="mn-rot" role="alert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" aria-hidden="true"><path d="M8 2h8v20H8zM11 19h2"/></svg><span>Gire o celular para jogar</span></div>`;
 
@@ -192,11 +193,11 @@ async function initStage() {
 }
 
 /* ---------- fluxo de telas: boot, tap, home, match, ds ---------- */
-const sync = () => { if (stage) { stage.want = body.dataset.s === 'home' ? 1 : 0; stage.live = !/^(match|ds)$/.test(body.dataset.s); } };
+const sync = () => { if (stage) { stage.want = body.dataset.s === 'home' ? 1 : 0; stage.live = !/^(match|ds|shop)$/.test(body.dataset.s); } };
 const go = (s) => { body.dataset.s = s; sync(); };
 const toast = (m) => { const t = $('#toast'); t.hidden = true; t.textContent = m; void t.offsetWidth; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 1700); };
 const dis = (b) => b.getAttribute('aria-disabled') === 'true';
-const CARDS = $$('.mn-card'), DESC = ['Entre na arena. Partida em desenvolvimento.', 'Alvo parado, circular ou perseguidor.', 'Skins, armas, emblemas e títulos.', 'Ainda não disponível.', 'Áudio, gráficos, controles e interface.'];
+const CARDS = $$('.mn-card'), DESC = ['Entre na arena. Partida em desenvolvimento.', 'Alvo parado, circular ou perseguidor.', 'Skins, armas, emblemas e títulos.', 'Entre na loja. Ainda sem itens.', 'Áudio, gráficos, controles e interface.'];
 let sel = -1, fsTried = false;
 /** Foco do menu, como no console: o card em foco sobe e cresce; o título grande e a câmera acompanham. */
 function pick(i, snd) {
@@ -272,7 +273,8 @@ on(document, 'click', (e) => {
   landscape(); AU.unlock();
   if (drag.on) { drag.on = false; return; }
   const g = e.target.closest('[data-go]'); if (g && !dis(g)) start(g);
-  if (e.target.closest('#dsb')) go('home');
+  const o = e.target.closest('[data-open]'); if (o && !dis(o)) go(o.dataset.open); // abre uma tela do menu (LOJA)
+  if (e.target.closest('#dsb,#shb')) go('home');
   if (e.target.closest('#dso')) { buildDS(); go('ds'); }
   if (e.target.closest('#rep')) report();
   if (e.target.closest('#mute')) { cfg.mute = !cfg.mute; save(); AU.apply(); paintMute(); if (!cfg.mute) AU.play('click'); }
@@ -280,7 +282,7 @@ on(document, 'click', (e) => {
 on(window, 'keydown', (e) => {
   const s = body.dataset.s;
   if (s === 'boot' || s === 'tap') { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enter(true); } return; }
-  if (e.key === 'Escape' && (s === 'match' || s === 'ds')) { AU.play('click', { rate: 0.88 }); go('home'); return; }
+  if (e.key === 'Escape' && (s === 'match' || s === 'ds' || s === 'shop')) { AU.play('click', { rate: 0.88 }); go('home'); return; }
   if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { const b = document.activeElement; if (b && b.classList && (b.classList.contains('mn-btn') || b.classList.contains('mn-card')) && !dis(b)) AU.play(b.dataset.snd || 'click', { rate: +b.dataset.rate || 1 }); }
   if (s === 'home' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
     e.preventDefault();
