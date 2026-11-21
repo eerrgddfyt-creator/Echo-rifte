@@ -132,12 +132,22 @@
 .mn-shop-hd h2{margin:0;font:700 clamp(26px,4.6vw,40px)/1 var(--f);letter-spacing:.14em}
 .mn-shop-hd h2::after{content:'';display:block;width:48px;height:3px;margin-top:8px;background:var(--echo)}
 
-/* LOJA: carrossel 3D de teste. Cards no estilo do card-vidro.html (mesma borda, blur e brilho, sem a sirene). Sem preserve-3d: ele desliga o backdrop-filter. */
-.mn-car{--gh:clamp(150px,56vh,250px);position:absolute;inset:0;z-index:2;perspective:900px;perspective-origin:50% 54%;touch-action:none}
-.mn-gc{--s:2;position:absolute;left:50%;top:54%;width:calc(var(--gh)*.56);height:var(--gh);margin:calc(var(--gh)/-2) 0 0 calc(var(--gh)*-.28);overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:radial-gradient(120% 90% at 50% 20%,rgba(200,185,190,.40),rgba(150,132,140,.30) 60%,rgba(120,104,112,.30) 100%);-webkit-backdrop-filter:blur(calc(7px*var(--s))) saturate(1.2);backdrop-filter:blur(calc(7px*var(--s))) saturate(1.2);box-shadow:0 calc(2px*var(--s)) calc(8px*var(--s)) rgba(0,0,0,.10);border:2px solid rgba(222,222,222,.2)}
-.mn-gc::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.14),transparent 50%);pointer-events:none}
-.mn-gc::after{content:"";position:absolute;inset:9%;border:1.5px solid rgba(232,230,225,.55);opacity:0;transition:opacity .25s;pointer-events:none}
-.mn-gc.sel::after{opacity:1}
-.mn-car-arrow{position:absolute;top:54%;width:52px;height:52px;margin-top:-26px;z-index:5}
-.mn-car-arrow.l{left:var(--sl)}
-.mn-car-arrow.r{right:var(--sr)}
+/* LOJA: 1 card de teste no centro (card-vidro.html: mesma borda, blur e brilho, sem a sirene), preço embaixo e confirmação de compra */
+.mn-item{position:absolute;left:50%;top:54%;z-index:2;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:18px}
+.mn-sc{--s:2;position:relative;display:block;padding:0;cursor:pointer;touch-action:manipulation;width:calc(146px*var(--s));height:calc(72px*var(--s));overflow:hidden;background:radial-gradient(120% 90% at 50% 20%,rgba(200,185,190,.40),rgba(150,132,140,.30) 60%,rgba(120,104,112,.30) 100%);-webkit-backdrop-filter:blur(calc(7px*var(--s))) saturate(1.2);backdrop-filter:blur(calc(7px*var(--s))) saturate(1.2);box-shadow:0 calc(2px*var(--s)) calc(8px*var(--s)) rgba(0,0,0,.10);border:2px solid rgba(222,222,222,.2);transition:transform .16s var(--ease),border-color .16s}
+.mn-sc::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.14),transparent 50%);pointer-events:none}
+@media(hover:hover){.mn-sc:hover{border-color:rgba(222,222,222,.45)}}
+.mn-sc:active{transform:scale(.985)}
+.mn-sc:focus-visible{outline:2px solid var(--echo);outline-offset:4px}
+@media(max-height:340px){.mn-sc{--s:1.6}}
+.mn-price{display:inline-flex;align-items:center;gap:10px;padding:9px 20px 9px 16px;background:linear-gradient(180deg,rgba(232,230,225,.1),rgba(232,230,225,0) 60%),rgba(14,16,19,.7);box-shadow:inset 0 1px 0 rgba(232,230,225,.18),inset 0 0 0 1px rgba(232,230,225,.1);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px))}
+.mn-price i{width:8px;height:8px;background:var(--echo);transform:rotate(45deg)}
+.mn-price b{font:700 22px/1 var(--f);letter-spacing:.1em}
+.mn-price.big b{font-size:28px}
+.mn-dlg{position:absolute;inset:0;z-index:20;display:grid;place-items:center;padding:16px;background:rgba(11,12,14,.72);opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s .2s}
+.mn-dlg.on{opacity:1;visibility:visible;transition:opacity .2s}
+.mn-dlg-box{width:min(380px,90vw);padding:22px 22px 18px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.mn-dlg-box h3{margin:0;font:700 20px var(--f);letter-spacing:.14em}
+.mn-dlg-box p{margin:0;color:var(--dim)}
+.mn-dlg-btns{display:flex;gap:10px;width:100%}
+.mn-dlg-btns .mn-btn{flex:1;justify-content:center;padding:0 12px;letter-spacing:.12em}
