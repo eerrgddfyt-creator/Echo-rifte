@@ -3,7 +3,7 @@
  * Ligação com o jogo: index.html abre o menu primeiro e só carrega app-boot.js quando o jogador toca em PLAY
  * (app-boot.js não foi alterado). index.html?jogo pula o menu. Se o menu falhar ao carregar, o jogo abre direto.
  * O menu tem o próprio Babylon (cena leve com o VANGUARD real, via data-vanguard.js e render-rig.js) e o descarta ao iniciar.
- * Ativos: PLAY (abre o jogo) e LOJA (tela vazia). TRAINING, CUSTOMIZATION e SETTINGS aparecem como "Em breve".
+ * Ativos: PLAY (abre o jogo) e LOJA (sem itens, com 4 cards de vidro de teste num carrossel 3D). TRAINING, CUSTOMIZATION e SETTINGS aparecem como "Em breve".
  * Preferências em localStorage 'echorift.settings.v1' ({mute, volUI}). Licença dos 3 sons: A CONFIRMAR.
  */
 const MARKUP = `<canvas id="mc"></canvas>
@@ -25,7 +25,7 @@ const MARKUP = `<canvas id="mc"></canvas>
   <button class="mn-btn sm" id="rep"><span class="lb">Relatório</span></button>
 </div>
 <section class="mn-ds" id="ds"><div class="w"></div></section>
-<section class="mn-shop" id="shop" aria-label="Loja"><svg class="mn-shop-bg" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><polygon class="bd" points="0,0 250,0 170,400 0,400"/><polygon class="rg" points="624.7,236.8 586.8,274.7 533.2,274.7 495.3,236.8 495.3,183.2 533.2,145.3 586.8,145.3 624.7,183.2"/><polygon class="rg" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><polygon class="rg" points="735.5,282.7 632.7,385.5 487.3,385.5 384.5,282.7 384.5,137.3 487.3,34.5 632.7,34.5 735.5,137.3"/><polygon class="rg" points="791.0,305.7 655.7,441.0 464.3,441.0 329.0,305.7 329.0,114.3 464.3,-21.0 655.7,-21.0 791.0,114.3"/><polygon class="rg" points="846.4,328.6 678.6,496.4 441.4,496.4 273.6,328.6 273.6,91.4 441.4,-76.4 678.6,-76.4 846.4,91.4"/><polygon class="ec e1" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><polygon class="ec e2" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><polygon class="ec e3" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><path class="rf" d="M560 0V400"/><path class="sh" d="M240 292H800M240 324H800M280 286v12M340 286v12M400 286v12M460 286v12M520 286v12M580 286v12M640 286v12M700 286v12M760 286v12"/></svg><header class="mn-shop-hd"><button class="mn-btn sm" id="shb" data-rate=".88" data-i="back"><span class="lb">Menu</span></button><h2>LOJA</h2></header><p class="mn-shop-empty">Nenhum item por enquanto.</p></section>
+<section class="mn-shop" id="shop" aria-label="Loja"><svg class="mn-shop-bg" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><polygon class="bd" points="0,0 250,0 170,400 0,400"/><polygon class="rg" points="624.7,236.8 586.8,274.7 533.2,274.7 495.3,236.8 495.3,183.2 533.2,145.3 586.8,145.3 624.7,183.2"/><polygon class="rg" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><polygon class="rg" points="735.5,282.7 632.7,385.5 487.3,385.5 384.5,282.7 384.5,137.3 487.3,34.5 632.7,34.5 735.5,137.3"/><polygon class="rg" points="791.0,305.7 655.7,441.0 464.3,441.0 329.0,305.7 329.0,114.3 464.3,-21.0 655.7,-21.0 791.0,114.3"/><polygon class="rg" points="846.4,328.6 678.6,496.4 441.4,496.4 273.6,328.6 273.6,91.4 441.4,-76.4 678.6,-76.4 846.4,91.4"/><polygon class="ec e1" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><polygon class="ec e2" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><polygon class="ec e3" points="680.1,259.7 609.7,330.1 510.3,330.1 439.9,259.7 439.9,160.3 510.3,89.9 609.7,89.9 680.1,160.3"/><path class="rf" d="M560 0V400"/><path class="sh" d="M240 292H800M240 324H800M280 286v12M340 286v12M400 286v12M460 286v12M520 286v12M580 286v12M640 286v12M700 286v12M760 286v12"/></svg><header class="mn-shop-hd"><button class="mn-btn sm" id="shb" data-rate=".88" data-i="back"><span class="lb">Menu</span></button><h2>LOJA</h2></header><div class="mn-car" id="car" aria-label="Cards de teste do vidro"><div class="mn-gc"></div><div class="mn-gc"></div><div class="mn-gc"></div><div class="mn-gc"></div></div><button class="mn-btn ic mn-car-arrow l" id="cl" data-snd="tap" data-i="back" aria-label="Card anterior"></button><button class="mn-btn ic mn-car-arrow r" id="cr" data-snd="tap" data-i="next" aria-label="Próximo card"></button></section>
 <p class="mn-toast mn-glass" id="toast" role="status" hidden></p>
 <div class="mn-rot" role="alert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="square" aria-hidden="true"><path d="M8 2h8v20H8zM11 19h2"/></svg><span>Gire o celular para jogar</span></div>`;
 
@@ -57,7 +57,7 @@ const ICON = {
   play: P('M7 4.5v15l12-7.5z'), train: P('M12 3v5M12 16v5M3 12h5M16 12h5M12 9l3 3-3 3-3-3z'),
   custom: P('M12 3l9 5-9 5-9-5zM3 13l9 5 9-5'), set: P('M4 7h9M17 7h3M4 17h3M11 17h9M13 4.5v5M7 14.5v5'),
   back: P('M15 5l-7 7 7 7'), on: P('M4 9v6h4l5 4V5L8 9zM16.5 9.5c1.3 1.4 1.3 3.6 0 5M19 7c2.6 2.8 2.6 7.2 0 10'),
-  off: P('M4 9v6h4l5 4V5L8 9zM17 9.5l4 5M21 9.5l-4 5'), lock: P('M7 11V8a5 5 0 0 1 10 0v3M5 11h14v9H5z'), shop: P('M5 8h14l-1.2 11H6.2zM9 8V6a3 3 0 0 1 6 0v2'),
+  off: P('M4 9v6h4l5 4V5L8 9zM17 9.5l4 5M21 9.5l-4 5'), lock: P('M7 11V8a5 5 0 0 1 10 0v3M5 11h14v9H5z'), shop: P('M5 8h14l-1.2 11H6.2zM9 8V6a3 3 0 0 1 6 0v2'), next: P('M9 5l7 7-7 7'),
 };
 
 /* ---------- som: hierarquia + prevenção de pilha ----------
@@ -222,6 +222,42 @@ const cd = (l, c, i) => `<button class="mn-card ${c === 'dis' ? '' : c}" tabinde
 
 /** Ponto de plug com o jogo: PLAY chama onStart({mode}). Quando a Promise resolve, o menu sai; se falhar, o menu fica e mostra o motivo. */
 const EchoMenu = (window.EchoMenu = { cfg, onStart });
+/** Carrossel 3D de teste da loja: 4 cards de vidro numa roda (o da frente fica selecionado). Gira com o dedo, com as setas da tela e com o teclado. */
+const car = (() => {
+  const N = 4, STEP = 55, K = Math.PI / 180, cards = $$('.mn-gc'), box = $('#car'), ds = [0, 0, 0, 0];
+  let pos = 0, target = 0, raf = 0, last = 0, g = null, moved = false, lastSel = 0, loud = true;
+  const wrap = (v) => ((v % N) + N) % N;
+  function render() {
+    const w = cards[0].offsetWidth || 120, R = w * 1.05, sel = wrap(Math.round(pos));
+    cards.forEach((c, i) => {
+      let d = wrap(i - pos); if (d >= N / 2) d -= N; ds[i] = d; // posição na roda: 0 = frente, -1 esquerda, 1 direita, +-2 atrás (some)
+      const a = d * STEP, o = Math.max(0, Math.min(1, 2 - Math.abs(d)));
+      c.style.transform = `translate3d(${(R * Math.sin(a * K)).toFixed(1)}px,0,${(R * (Math.cos(a * K) - 1)).toFixed(1)}px) rotateY(${a.toFixed(1)}deg)`;
+      c.style.opacity = o.toFixed(2); c.style.zIndex = String(10 - Math.round(Math.abs(d) * 4)); c.style.pointerEvents = o > 0.2 ? 'auto' : 'none';
+      c.classList.toggle('sel', i === sel);
+    });
+    if (sel !== lastSel) { lastSel = sel; if (loud) AU.play('tap', { vol: 0.7 }); }
+  }
+  function step(t) {
+    const dt = Math.min((t - last) / 1000, 0.05); last = t; raf = 0;
+    if (!g) { pos += (target - pos) * (1 - Math.exp(-dt * 11)); if (Math.abs(target - pos) < 0.002) pos = target; }
+    render(); if (g || pos !== target) kick();
+  }
+  function kick() { if (RM.matches && !g) { pos = target; render(); return; } if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); } }
+  const go = (n, snd) => { loud = snd; target = Math.round(target) + n; kick(); };
+  on(box, 'pointerdown', (e) => { loud = true; moved = false; g = { x: e.clientX, p: pos, lp: pos, lt: performance.now(), v: 0 }; });
+  on(window, 'pointermove', (e) => {
+    if (!g) return; const dx = e.clientX - g.x; if (Math.abs(dx) > 8) moved = true; if (!moved) return;
+    const now = performance.now(); pos = g.p - dx / ((cards[0].offsetWidth || 120) * 0.85);
+    g.v = ((pos - g.lp) / Math.max(1, now - g.lt)) * 1000; g.lp = pos; g.lt = now; kick();
+  });
+  const end = () => { if (!g) return; const v = g.v; g = null; if (moved) target = Math.round(pos + Math.max(-2, Math.min(2, v)) * 0.18); kick(); };
+  on(window, 'pointerup', end); on(window, 'pointercancel', end); on(window, 'resize', render);
+  cards.forEach((c, i) => on(c, 'click', () => { if (moved) return; const d = Math.round(ds[i]); if (d) go(d, true); })); // tocar num card lateral traz ele para a frente
+  on($('#cl'), 'click', () => go(-1, false)); on($('#cr'), 'click', () => go(1, false));
+  render();
+  return { key: (n) => go(n, true) };
+})();
 /** Fecha o menu depois que o jogo já abriu por baixo: some, solta os ouvintes, libera o 3D e o áudio do menu. */
 function close() {
   root.classList.add('out'); ac.abort();
@@ -283,6 +319,7 @@ on(window, 'keydown', (e) => {
   const s = body.dataset.s;
   if (s === 'boot' || s === 'tap') { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enter(true); } return; }
   if (e.key === 'Escape' && (s === 'match' || s === 'ds' || s === 'shop')) { AU.play('click', { rate: 0.88 }); go('home'); return; }
+  if (s === 'shop' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); car.key(e.key === 'ArrowRight' ? 1 : -1); return; }
   if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { const b = document.activeElement; if (b && b.classList && (b.classList.contains('mn-btn') || b.classList.contains('mn-card')) && !dis(b)) AU.play(b.dataset.snd || 'click', { rate: +b.dataset.rate || 1 }); }
   if (s === 'home' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
     e.preventDefault();

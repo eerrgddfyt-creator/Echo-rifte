@@ -128,7 +128,16 @@
 .mn-shop-bg .rf{stroke:rgba(232,230,225,.22);stroke-width:1}
 .mn-shop-bg .sh{fill:none;stroke:rgba(232,230,225,.09);stroke-width:1}
 @keyframes mnshop{0%{transform:scale(.3);opacity:0}12%{opacity:.4}100%{transform:scale(2.4);opacity:0}}
-.mn-shop-hd{position:relative;display:flex;align-items:center;gap:18px}
+.mn-shop-hd{position:relative;z-index:5;display:flex;align-items:center;gap:18px}
 .mn-shop-hd h2{margin:0;font:700 clamp(26px,4.6vw,40px)/1 var(--f);letter-spacing:.14em}
 .mn-shop-hd h2::after{content:'';display:block;width:48px;height:3px;margin-top:8px;background:var(--echo)}
-.mn-shop-empty{position:absolute;left:70%;top:52%;margin:0;transform:translate(-50%,-50%);color:var(--dim);letter-spacing:.06em;text-align:center}
+
+/* LOJA: carrossel 3D de teste. Cards no estilo do card-vidro.html (mesma borda, blur e brilho, sem a sirene). Sem preserve-3d: ele desliga o backdrop-filter. */
+.mn-car{--gh:clamp(150px,56vh,250px);position:absolute;inset:0;z-index:2;perspective:900px;perspective-origin:50% 54%;touch-action:none}
+.mn-gc{--s:2;position:absolute;left:50%;top:54%;width:calc(var(--gh)*.56);height:var(--gh);margin:calc(var(--gh)/-2) 0 0 calc(var(--gh)*-.28);overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:radial-gradient(120% 90% at 50% 20%,rgba(200,185,190,.40),rgba(150,132,140,.30) 60%,rgba(120,104,112,.30) 100%);-webkit-backdrop-filter:blur(calc(7px*var(--s))) saturate(1.2);backdrop-filter:blur(calc(7px*var(--s))) saturate(1.2);box-shadow:0 calc(2px*var(--s)) calc(8px*var(--s)) rgba(0,0,0,.10);border:2px solid rgba(222,222,222,.2)}
+.mn-gc::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.14),transparent 50%);pointer-events:none}
+.mn-gc::after{content:"";position:absolute;inset:9%;border:1.5px solid rgba(232,230,225,.55);opacity:0;transition:opacity .25s;pointer-events:none}
+.mn-gc.sel::after{opacity:1}
+.mn-car-arrow{position:absolute;top:54%;width:52px;height:52px;margin-top:-26px;z-index:5}
+.mn-car-arrow.l{left:var(--sl)}
+.mn-car-arrow.r{right:var(--sr)}

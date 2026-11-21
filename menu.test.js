@@ -25,4 +25,6 @@ assert.deepEqual(faltam, [], 'ids usados pelo JS e ausentes na marcação: ' + f
 assert.ok(!/data-go="treino"/.test(marcacao), 'TRAINING deve estar indisponível');
 assert.ok(/data-open="shop"/.test(marcacao) && /id="shop"/.test(marcacao) && /id="shb"/.test(marcacao), 'LOJA abre a tela da loja');
 assert.ok(!/aria-disabled="true" data-i="shop"/.test(marcacao), 'LOJA deve estar disponível');
+assert.equal((marcacao.match(/class="mn-gc"/g) || []).length, 4, 'a loja tem 4 cards de vidro');
+assert.ok(!/preserve-3d/.test(css), 'preserve-3d desliga o backdrop-filter dos cards');
 console.log('menu.test.js: ok (' + sels.length + ' seletores escopados, ' + usados.length + ' ids conferidos)');
