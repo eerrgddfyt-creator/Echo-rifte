@@ -22,3 +22,9 @@
 ## Pendências
 - Nada disso rodou num navegador ainda.
 - Licença dos 3 sons: **a confirmar** (placeholders até você validar a origem).
+
+## Versão e APK (html2app.dev)
+- A versão do jogo é o número em `const GAME_V = N` no `index.html`. **Aumente a cada versão nova.** Ela aparece no menu ("Versão N", embaixo do nome do personagem).
+- O arquivo `echo-rift-apk/index.html` (separado do jogo, **não suba no GitHub do jogo**) é o que vai para o html2app.dev. Ele mostra "Verificando atualização...", lê o `GAME_V` do jogo em `https://eerrgddfyt-creator.github.io/Echo-rifte/` e abre o jogo. Se houver número maior que o da última abertura, avisa "Atualização encontrada!".
+- Como o jogo é aberto direto do GitHub Pages, quando você subir arquivos novos lá o APK já abre a versão nova, sem gerar o APK de novo. O jogo precisa de internet (o Babylon vem de um CDN).
+- Se der erro (sem internet, 404, demora), o launcher mostra o motivo e os botões "Tentar de novo" e "Abrir mesmo assim".

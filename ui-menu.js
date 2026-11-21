@@ -18,7 +18,7 @@ const MARKUP = `<canvas id="mc"></canvas>
   <button class="mn-card" style="--ac:var(--echo)" data-open="shop" data-snd="ok" data-i="shop"><span class="lb">LOJA</span></button>
   <button class="mn-card" aria-disabled="true" data-i="set"><span class="lb">SETTINGS</span><small>Em breve</small></button>
 </nav>
-<div class="mn-char"><b>VANGUARD</b><span>Lâmina de um gume</span><span class="hint">Arraste ou use as setas</span></div>
+<div class="mn-char"><b>VANGUARD</b><span>Lâmina de um gume</span><span class="hint">Arraste ou use as setas</span><span class="hint" id="ver"></span></div>
 <button class="mn-btn ic" id="mute"></button>
 <div class="mn-dev" data-dev>
   <button class="mn-btn sm" id="dso"><span class="lb">Design System</span></button>
@@ -38,7 +38,7 @@ function loadCss() {
 }
 
 /** Mostra o menu. onStart({mode}) deve devolver uma Promise que resolve quando o jogo estiver pronto. */
-export async function showMenu({ onStart }) {
+export async function showMenu({ onStart, version }) {
 await loadCss();
 const root = document.createElement('div'); root.id = 'mn'; root.dataset.s = 'boot'; root.innerHTML = MARKUP; document.body.append(root);
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -345,5 +345,6 @@ paintMute();
 try { AU.init(); } catch (e) { note(e); }
 initStage().then((s) => { stage = s; sync(); }).catch((e) => { note(e); body.classList.add('no3d'); });
 setTimeout(() => { if (body.dataset.s === 'boot') go('tap'); }, 2000);
+if (version) $('#ver').textContent = 'Versão ' + version;
 return { close };
 }

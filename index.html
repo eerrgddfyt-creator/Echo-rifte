@@ -19,10 +19,11 @@
 <script type="module">
 // Entrada: o menu abre primeiro e PLAY carrega o jogo (app-boot.js, sem alterações).
 // index.html?jogo pula o menu. Se o menu falhar, o jogo abre direto.
+const GAME_V = 1; // aumente a cada versão nova: o APK compara esse número e avisa da atualização
 const boot = () => import('./app-boot.js');
 if (new URLSearchParams(location.search).has('jogo')) boot();
 else import('./ui-menu.js')
-  .then((m) => m.showMenu({ onStart: () => (window.BABYLON ? boot() : Promise.reject(new Error('O Babylon não carregou. Confira a conexão.'))) }))
+  .then((m) => m.showMenu({ version: GAME_V, onStart: () => (window.BABYLON ? boot() : Promise.reject(new Error('O Babylon não carregou. Confira a conexão.'))) }))
   .catch((e) => { // o menu falhou: o jogo abre direto, mas o aviso vermelho mostra o motivo
     console.error(e); const r = document.getElementById('mn'); if (r) r.remove();
     const m = document.createElement('div'); m.textContent = 'Menu não carregou (' + ((e && e.message) || e) + '). Abrindo o jogo direto.';

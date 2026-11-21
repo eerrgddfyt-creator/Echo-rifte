@@ -14,6 +14,7 @@ const idx = readFileSync('index.html', 'utf8');
 assert.ok(!/<script[^>]*src="app-boot\.js"/.test(idx), 'o index não pode carregar o app-boot direto');
 assert.ok(idx.includes("import('./app-boot.js')") && idx.includes("has('jogo')"), 'loader do index');
 assert.ok(idx.includes('catch') && idx.includes('boot()'), 'se o menu falhar, o jogo abre direto');
+assert.ok(/const GAME_V\s*=\s*\d+/.test(idx) && idx.includes('version: GAME_V'), 'o index tem a versão (GAME_V) que o APK lê');
 
 const mod = await import('./ui-menu.js'); // importar não pode tocar em DOM
 assert.equal(typeof mod.showMenu, 'function');

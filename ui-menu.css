@@ -83,6 +83,7 @@
 .mn-char b{display:block;font:700 22px/1.1 var(--f);letter-spacing:.2em}
 .mn-char span{color:var(--dim);font-size:12px}
 .mn-char .hint{display:block;margin-top:10px;font-size:11px}
+.mn-char .hint:empty{display:none}
 #mn #mute{position:fixed;top:var(--st);right:var(--sr);width:48px;height:48px;z-index:6;visibility:hidden}
 #mn[data-s=tap] #mute,#mn[data-s=home] #mute{visibility:visible}
 .mn-dev{position:fixed;top:var(--st);right:calc(var(--sr) + 58px);display:flex;gap:8px;z-index:6;visibility:hidden}
