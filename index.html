@@ -23,7 +23,12 @@ const boot = () => import('./app-boot.js');
 if (new URLSearchParams(location.search).has('jogo')) boot();
 else import('./ui-menu.js')
   .then((m) => m.showMenu({ onStart: () => (window.BABYLON ? boot() : Promise.reject(new Error('O Babylon não carregou. Confira a conexão.'))) }))
-  .catch((e) => { console.error(e); const r = document.getElementById('mn'); if (r) r.remove(); boot(); });
+  .catch((e) => { // o menu falhou: o jogo abre direto, mas o aviso vermelho mostra o motivo
+    console.error(e); const r = document.getElementById('mn'); if (r) r.remove();
+    const m = document.createElement('div'); m.textContent = 'Menu não carregou (' + ((e && e.message) || e) + '). Abrindo o jogo direto.';
+    m.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:200;padding:10px 14px;background:#C4452D;color:#fff;font:600 13px system-ui,sans-serif;text-align:center;pointer-events:none';
+    document.body.append(m); setTimeout(() => m.remove(), 12000); boot();
+  });
 </script>
 </body>
 </html>

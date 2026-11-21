@@ -10,6 +10,11 @@
 - Só PLAY está ativo. TRAINING, CUSTOMIZATION, LOJA e SETTINGS aparecem como "Em breve".
 - Ainda não há "voltar ao menu" a partir da partida: recarregue a página.
 
+## Se o menu não aparecer e o jogo abrir direto
+- Se aparecer uma faixa vermelha no topo ("Menu não carregou ..."), o texto dela diz o motivo (arquivo faltando, erro no script).
+- Sem faixa nenhuma, quase sempre é o `index.html` antigo em cache ou não substituído: abra `.../index.html?v=2` e confira se o `index.html` do repositório tem a palavra `ui-menu.js`.
+- Confira que `ui-menu.js`, `ui-menu.css` e os 3 `ui-snd-*.mp3` estão na mesma pasta do `index.html` (abrir `.../ui-menu.js` no navegador deve mostrar o código, não "404").
+
 ## Testar
 - `node menu.test.js` (sem navegador): CSS sem vazar para o jogo, arquivos, ligação do index.
 - No aparelho: logo e toque para entrar; cards (arrastar troca o foco, tocar abre); sons; PLAY mostra "loading", abre a arena e o menu some sem sobrar nada; joystick, golpe, esquiva e ECHO iguais ao M5; os outros 4 cards avisam "Ainda não disponível".
